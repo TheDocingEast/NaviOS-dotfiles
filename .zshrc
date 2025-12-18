@@ -153,4 +153,3 @@ export PATH="$PATH:/usr/share/dotnet"
 export PATH=/home/thedocingeast/miniconda3/bin:/anaconda3/bin:/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/opt/android-sdk/emulator:/opt/cuda/bin:/opt/cuda/nsight_compute:/opt/cuda/nsight_systems/bin:/var/lib/flatpak/exports/bin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl
 export PATH="$HOME/go/bin:$PATH"
 
-. "$HOME/.cargo/env"
