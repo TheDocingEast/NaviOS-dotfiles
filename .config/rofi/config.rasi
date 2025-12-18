@@ -1,0 +1,24 @@
+configuration {
+    display-drun: "Apps:";
+    display-window: "Windows:";
+    display-combi: "Combi:";
+    display-emoji: "Emoji:";
+    font: "LazyFox Pixel Font 4w, Symbola 12, Noto Color Emoji 12";
+    show-icons: true;
+    modi: "combi,window,emoji,calc";
+    combi-modi: "drun";
+    icon-theme: "Papirus";
+    kb-mode-next: "Tab";
+    kb-mode-previous: "Shift+Tab";
+
+    // Дополнительно очищаем конфликтующие бинды
+    kb-element-next: "";
+    kb-element-prev: "";
+
+    // Опционально: меняем другие конфликтующие бинды
+    kb-secondary-mode-next: "";
+    kb-secondary-mode-previous: "";
+    wayland: true;
+}
+
+@theme "~/navios/themes/nord/nord.rasi"

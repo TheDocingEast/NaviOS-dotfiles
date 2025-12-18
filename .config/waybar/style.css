@@ -1,0 +1,137 @@
+* {
+    /* `otf-font-awesome` and SpaceMono Nerd Font are required to be installed for icons */
+    font-family: "LazyFox Pixel Font 4w", FontAwesome, Roboto, Helvetica;
+    font-size: 14px;
+    transition: background-color .3s ease-out;
+}
+
+window#waybar {
+    background: rgba(20, 28, 38, 0.8);
+    color: #c0caf5;
+    font-family: 
+        SpaceMono Nerd Font,
+        feather;
+    transition: background-color .5s;
+    border-radius: 10px;
+    padding: 10px 10px;
+}
+
+
+.modules-left,
+.modules-center,
+.modules-right
+{
+    margin: 5px 7px;
+    padding: 0 2;
+}
+
+@keyframes blink {
+    to {
+        background-color: #ffffff;
+        color: black;
+    }
+}
+
+#clock,
+#custom-arch,
+#battery,
+#cpu,
+#memory,
+#disk,
+#temperature,
+#backlight,
+#network,
+#pulseaudio,
+#wireplumber,
+#custom-media,
+#tray,
+#mode,
+#idle_inhibitor,
+#scratchpad,
+#power-profiles-daemon,
+#language,
+#custom-gpu,
+#custom-notify,
+#mpris,
+#window,
+#mpd {
+  padding: 0 5px;
+  border-radius: 7px;
+  transition: border-bottom .2s;
+}
+
+#clock:hover,
+#battery:hover,
+#cpu:hover,
+#memory:hover,
+#disk:hover,
+#temperature:hover,
+#backlight:hover,
+#network:hover,
+#pulseaudio:hover,
+#wireplumber:hover,
+#custom-media:hover,
+#tray:hover,
+#mode:hover,
+#idle_inhibitor:hover,
+#scratchpad:hover,
+#power-profiles-daemon:hover,
+#language:hover,
+#custom-gpu:hover,
+#custom-notify:hover,
+#mpris:hover,
+#window:hover,
+#mpd:hover {
+  border-bottom: solid 2 #81a1c1;
+  background: #3b4252;
+}
+
+#battery.critical:not(.charging) {
+    background: #bf616a;
+    color: #c0caf5;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: steps(12);
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#workspaces {
+  border-bottom: solid 2 #81a1c1;
+  border-radius: 7px;
+  background: #2e3440;
+}
+
+#workspaces button {
+  border-radius: 7px;
+  padding: 0 5 0 5;
+  transition: 
+    padding .6s,
+    background .4s;
+}
+
+#workspaces button.active {
+  background: #81a1c1;
+  padding: 0 10 0 10;
+  color: #11111b; 
+  transition: 
+    padding .6s,
+    background .4s;
+}
+
+#workspaces button:hover {
+  background: #5e81ac;
+  color: #11111b;
+  transition: background .4s;
+}
+
+#custom-arch {
+    color: #4c566a;
+    padding: 0 5px;
+    font-size: 27px;
+    transition: color .5s;
+}
+
+#custom-arch:hover {
+    color: #c0caf5;
+}

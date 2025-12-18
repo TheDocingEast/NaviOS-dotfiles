@@ -1,0 +1,12 @@
+2025/12/07-17:17:43.013 52a1a Reusing MANIFEST /home/thedocingeast/.config/obsidian/IndexedDB/app_obsidian.md_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/07-17:17:43.014 52a1a Recovering log #33
+2025/12/07-17:17:43.032 52a1a Reusing old log /home/thedocingeast/.config/obsidian/IndexedDB/app_obsidian.md_0.indexeddb.leveldb/000033.log 
+2025/12/07-17:37:43.998 52a1b Level-0 table #39: started
+2025/12/07-17:37:44.011 52a1b Level-0 table #39: 1345972 bytes OK
+2025/12/07-17:37:44.013 52a1b Delete type=0 #33
+2025/12/07-17:40:41.383 52a1b Compacting 1@1 + 1@2 files
+2025/12/07-17:40:41.398 52a1b Generated table #40@1: 2657 keys, 838324 bytes
+2025/12/07-17:40:41.399 52a1b Compacted 1@1 + 1@2 files => 838324 bytes
+2025/12/07-17:40:41.400 52a1b compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/12/07-17:40:41.400 52a1b Delete type=2 #39
+2025/12/07-17:40:41.400 52a1b Delete type=2 #36
