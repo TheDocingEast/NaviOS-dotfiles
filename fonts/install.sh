@@ -21,4 +21,10 @@ echo
 echo "Install Lazyfox Pixel Font"
 echo
 
-cp ./LazyFox/LazyFox\ Pixel\ Font\ 1 /usr/share/fonts
+cp ./LazyFox/LazyFoxPixelFont1.ttf /usr/share/fonts
+
+echo
+echo "Install Nerd, Awesome, Meslo fonts"
+echo
+
+pacman -S woof2-font-awesome ttf-meslo-nerd noto-fonts-emoji ttf-dejavu
