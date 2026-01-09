@@ -1,39 +1,39 @@
 * {
-    /* `otf-font-awesome` and SpaceMono Nerd Font are required to be installed for icons */
-    font-family: "LazyFox Pixel Font 4w", FontAwesome, Roboto, Helvetica;
-    font-size: 14px;
-    transition: background-color .3s ease-out;
+  /* `otf-font-awesome` and SpaceMono Nerd Font are required to be installed for icons */
+  font-family: Monaspace Krypton Frozen Medium, MesloLGS Nerd Font;
+  font-size: 14px;
+  transition: background-color .3s ease-out;
 }
 
 window#waybar {
-    background: rgba(20, 28, 38, 0.8);
-    color: #c0caf5;
-    font-family: 
-        SpaceMono Nerd Font,
-        feather;
-    transition: background-color .5s;
-    border-radius: 10px;
-    padding: 10px 10px;
+  background: #141c26;
+  color: #d8dee9;
+  border-radius: 7px;
+  padding: 10px 10px;
 }
 
 
 .modules-left,
 .modules-center,
-.modules-right
-{
-    margin: 5px 7px;
-    padding: 0 2;
+.modules-right {
+  margin: 2px 5px;
+  padding: 5px 5px;
 }
 
-@keyframes blink {
-    to {
-        background-color: #ffffff;
-        color: black;
-    }
+/*NaviOS logo*/
+#custom-navios {
+  color: #4c566a;
+  padding: 0 5px;
+  font-size: 27px;
+  transition: color .5s;
 }
 
-#clock,
-#custom-arch,
+#custom-navios:hover {
+  color: #c0caf5;
+}
+
+
+/*Main modules style*/
 #battery,
 #cpu,
 #memory,
@@ -51,16 +51,25 @@ window#waybar {
 #power-profiles-daemon,
 #language,
 #custom-gpu,
+#custom-brightness,
 #custom-notify,
+#pulseaudio-slider,
+#clock,
 #mpris,
-#window,
 #mpd {
-  padding: 0 5px;
+  margin: 0 2px;
   border-radius: 7px;
-  transition: border-bottom .2s;
+  padding: 0 7px;
+  border: double 3 transparent;
+  transition: border .4s;
 }
 
-#clock:hover,
+#custom-notify {
+  font-size: 16pt;
+}
+
+
+/*Main module style for hover state*/
 #battery:hover,
 #cpu:hover,
 #memory:hover,
@@ -78,60 +87,100 @@ window#waybar {
 #power-profiles-daemon:hover,
 #language:hover,
 #custom-gpu:hover,
+#custom-brightness:hover,
 #custom-notify:hover,
+#pulseaudio-slider:hover,
+#clock:hover,
 #mpris:hover,
-#window:hover,
 #mpd:hover {
-  border-bottom: solid 2 #81a1c1;
-  background: #3b4252;
+  border-right: double 3 #c0caf5;
+  border-left: double 3 #c0caf5;
+  transition: border .4s;
 }
 
-#battery.critical:not(.charging) {
-    background: #bf616a;
-    color: #c0caf5;
-    animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: steps(12);
-    animation-iteration-count: infinite;
-    animation-direction: alternate;
-}
 
-#workspaces {
-  border-bottom: solid 2 #81a1c1;
+/*Groups style*/
+#tooltip,
+#sound,
+#datetime {
   border-radius: 7px;
-  background: #2e3440;
+  padding: 0 4px;
+  background: #1f262f;
+  border: double 2 transparent;
+  transition: border .4s;
+}
+
+
+/*Groups style for hover state*/
+#tooltip:hover,
+#sound:hover,
+#datetime:hover {
+  border-top: double 2 #81a1c1;
+  border-bottom: double 2 #81a1c1;
+  transition: border .4s;
+  transition: border .4s;
+}
+
+
+/*Animation for battery warning*/
+#battery.critical:not(.charging) {
+  background: #bf616a;
+  color: #c0caf5;
+  animation-name: blink;
+  animation-duration: 0.5s;
+  animation-timing-function: steps(12);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+
+/* Workspaces style */
+#workspaces {
+  padding: 3px 3px;
+  border-radius: 7px;
+  background: #1f262f;
 }
 
 #workspaces button {
-  border-radius: 7px;
-  padding: 0 5 0 5;
-  transition: 
-    padding .6s,
-    background .4s;
+  border-radius: inherit;
+  border: double 3 transparent;
+  transition:
+    border .4s;
 }
 
 #workspaces button.active {
-  background: #81a1c1;
-  padding: 0 10 0 10;
-  color: #11111b; 
-  transition: 
-    padding .6s,
-    background .4s;
+  border-top: double 3 #81a1c1;
+  border-bottom: double 3 #81a1c1;
+  transition:
+    border .4s;
 }
 
 #workspaces button:hover {
-  background: #5e81ac;
-  color: #11111b;
-  transition: background .4s;
+  border-left: double 3 #c0caf5;
+  border-right: double 3 #c0caf5;
+  background: none;
+  transition:
+    border .4s;
 }
 
-#custom-arch {
-    color: #4c566a;
-    padding: 0 5px;
-    font-size: 27px;
-    transition: color .5s;
+#pulseaudio-slider slider {
+  min-height: 0px;
+  min-width: 0px;
+  opacity: 0;
+  background-image: none;
+  border: none;
+  box-shadow: none;
 }
 
-#custom-arch:hover {
-    color: #c0caf5;
+#pulseaudio-slider trough {
+  min-height: 10px;
+  min-width: 80px;
+  border-radius: 5px;
+  background: black;
+}
+
+#pulseaudio-slider highlight {
+  min-width: 10px;
+  border-radius: 5px;
+  background: #c0caf5;
 }

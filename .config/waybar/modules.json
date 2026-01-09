@@ -1,5 +1,35 @@
 {
-  "custom/arch": {
+  "group/tooltip": {
+    "orientation": "horizontal",
+    "modules": [
+      "cpu",
+      "temperature",
+      "custom/gpu",
+      "memory",
+      "network",
+      "hyprland/language",
+      "tray",
+      "custom/notify"
+    ]
+  },
+  "group/sound": {
+    "orientation": "horizontal",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true
+    },
+    "modules": [
+      "pulseaudio",
+      "mpris"
+    ]
+  },
+  "group/datetime": {
+    "orientation": "horizontal",
+    "modules": [
+      "clock"
+    ]
+  },
+  "custom/navios": {
     "format": "✦",
     "tooltip": true,
     "tooltip-format": "Navigate in life",
@@ -17,7 +47,7 @@
     }
   },
   "pulseaudio": {
-    "format": "󰝚  {volume}%",
+    "format": "󰝚 {volume}%",
     "format-bluetooth": "{icon} {volume}%  {format_source}",
     "format-bluetooth-muted": "󰝛 {icon} {format_source}",
     "format-muted": "󰝛 {format_source}",
@@ -47,12 +77,12 @@
     "on-click": "nm-connection-editor"
   },
   "cpu": {
-    "format": "  {usage}%",
+    "format": " {usage}%",
     "tooltip": true,
     "interval": 5
   },
   "memory": {
-    "format": "  {}%",
+    "format": " {}%",
     "tooltip": true
   },
   "tray": {
@@ -62,9 +92,11 @@
   "temperature": {
     "interval": 5,
     "hwmon-path": "/sys/class/hwmon/hwmon1/temp1_input",
-    "critical-threshold": 100,
-    "format-critical": " {temperatureC}",
-    "format": " {temperatureC}°C"
+    "critical-threshold": 90,
+    "format-critical": "󰈸 {temperatureC}",
+    "format": "󰜗 {temperatureC}°C",
+    "tooltip": true,
+    "tooltip-format": "CPU temp: {temperatureC}°C"
   },
   "hyprland/language": {
     "format": "󰧹 {}",
@@ -98,20 +130,22 @@
     "interval": 2,
     "return-type": "json",
     "tooltip": true,
-    "on-click": "kitty btop"
+    "on-click": "kitty -e btop"
   },
   "clock": {
-    "format": "{:%H:%M | %e %b} ",
+    "format": "  {:%I:%M %p}",
     "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-    "format-alt": "{:%H:%M:%S | %d.%m.%Y}",
-    "interval": 1
+    "format-alt": "󰃭  {:%d.%m.%Y}",
+    "interval": 15
   },
   "mpris": {
-    "format": " {artist} - {title}",
-    "format-paused": "▶ {artist} - {title}",
+    "format": " | {player_icon} {artist} - {title}",
+    "format-paused": "▶ | {player_icon} {artist} - {title}",
     "format-stopped": "",
     "tooltip": true,
-    "player": "chromium",
+    "ignored-players": [
+      "firefox"
+    ],
     "on-click": "playerctl play-pause",
     "on-click-right": "playerctl next",
     "on-click-middle": "playerctl previous",
@@ -119,11 +153,15 @@
     "on-scroll-down": "playerctl position 5-",
     "max-length": 50,
     "title-len": 30,
-    "artist-len": 20
+    "artist-len": 20,
+    "player-icons": {
+      "default": "󰝚",
+      "spotify": "󰓇"
+    }
   },
   "custom/notify": {
     "tooltip": true,
-    "format": "<span size='16pt'>{icon}</span>",
+    "format": "{icon}",
     "format-icons": {
       "notification": "󱅫",
       "none": "󰂜",

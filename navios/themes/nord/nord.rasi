@@ -3,6 +3,35 @@
  * Based on the Nord color palette: https://www.nordtheme.com/
  */
 
+configuration {
+  display-drun: "";
+  display-combi: "Apps:";
+  display-emoji: "Emoji:";
+  font: "Monaspace Krypton Frozen Medium, Symbola 12, Noto Color Emoji 12";
+  modi: "combi,emoji,calc";
+  show-icons: true;
+	icon-theme: "Nordzy-dark";
+  drun-display-format:            "{name}";
+  disable-history:                false;
+  fullscreen:                     false;
+	hide-scrollbar: true;
+	sidebar-mode: false;
+
+  combi-modi: "drun";
+  icon-theme: "Nordzy-dark";
+  kb-mode-next: "Tab";
+  kb-mode-previous: "Shift+Tab";
+
+    // Дополнительно очищаем конфликтующие бинды
+  kb-element-next: "";
+  kb-element-prev: "";
+
+    // Опционально: меняем другие конфликтующие бинды
+  kb-secondary-mode-next: "";
+  kb-secondary-mode-previous: "";
+  wayland: true;
+}
+
 * {
     nord0: #2E3440;   /* dark background */
     nord1: #3B4252;
@@ -34,17 +63,21 @@
 }
 
 window {
-    background-color: @background;
-    border:           2;
-    border-color: @nord1;
-    padding:          5;
-    border-radius: 2px;
-    width: 700;
+  background-color: @background;
+  border:           5;
+  border-color: @nord1;
+  padding:          5;
+  border-radius: 15px;
+  width: 700;
+  transparency: "real";
 }
 
 mainbox {
-    border:  0;
-    padding: 0;
+  background-color: @background-alt;
+	border: 0%;
+  border-radius: 0%;
+	border-color: @accent;
+  children: [ inputbar, listview ];
 }
 
 message {
@@ -58,52 +91,39 @@ textbox {
 }
 
 listview {
-    columns: 1;
-    fixed-height: 5;
-    border-color: @separatorcolor;
-    spacing:      7px;
-    scrollbar:    true;
+  lines: 4;
+  columns: 2;
+  border-color: @separatorcolor;
+  spacing: 0%;
+  cycle: false;
+  dynamic: true;
+  layout: vertical;
 }
 
 element {
-    padding: 2px;
-    margin: 0px;
+  padding: 2px;
+  margin: 0px;
+  cursor: pointer;
+  text-color: @nord4;
 }
 
-element.normal.normal {
-    text-color: @nord4;          /* bright white text for unselected entries */
+element selected {
+  background-color: @selected;
+  text-color: @foreground;
+	border: 2px;
+  border-radius: 10px;
+  border-color: @border;
 }
-
-element.selected.normal {
-    text-color: @nord9;          /* dark text on cyan selection */
-}
-
-element.alternate.normal {
-    text-color: @nord4;          /* bright white for alternate rows */
-}
-
-element.normal.active {
-    text-color: @nord10;          /* bright white for alternate rows */
-}
-
-element.selected.active {
-    text-color: @nord9;          /* bright white for alternate rows */
-}
-
-element.alternate.active {
-    text-color: @nord9;          /* bright white for alternate rows */
-}
-
+  
 element-text {
-    text-color: inherit;          /* keep inherit, so our element overrides propagate */
+  cursor: inherit;
+  text-color: inherit;    
+  vertical-align: 0.5;
 }
 
-
-scrollbar {
-    width:        4px;
-    border:       0;
-    handle-width: 8px;
-    padding:      0;
+element-icon {
+  cursor: inherit;
+  size: 48px;
 }
 
 inputbar {
@@ -121,7 +141,12 @@ prompt {
 entry {
     spacing:    0;
     text-color: @normal-foreground;
+    expand: true;
+    horizontal-align: 0;
+    placeholder: "Search Apps";
+    blink: true;
 }
+
 
 textbox-prompt-colon {
     expand:     false;

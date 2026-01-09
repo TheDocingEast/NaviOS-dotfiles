@@ -112,7 +112,7 @@ set_wallpaper() {
       hyprctl hyprpaper preload "$WALLPAPER_PATH"
       hyprctl hyprpaper wallpaper ",$WALLPAPER_PATH"
     else
-      notify-send -a rofi -i /home/thedocingeast/.config/hypr/wallpaper/current "Wallpaper Selector" "No supported Wayland wallpaper tool found"
+      notify-send -a rofi -i $HOME/.config/hypr/wallpaper/current "Wallpaper Selector" "No supported Wayland wallpaper tool found"
       exit 1
     fi
   else
@@ -124,7 +124,7 @@ set_wallpaper() {
     elif command -v xwallpaper &>/dev/null; then
       xwallpaper --zoom "$WALLPAPER_PATH"
     else
-      notify-send -a rofi -i /home/thedocingeast/.config/hypr/wallpaper/current "Wallpaper Selector" "No supported X11 wallpaper tool found"
+      notify-send -a rofi -i $HOME/.config/hypr/wallpaper/current "Wallpaper Selector" "No supported X11 wallpaper tool found"
       exit 1
     fi
   fi
@@ -135,7 +135,7 @@ set_wallpaper
 
 # Save current wallpaper path for persistence
 echo "$WALLPAPER_PATH" >"$CURRENT_WALLPAPER"
-ln -sf $WALLPAPER_PATH /home/thedocingeast/.config/hypr/wallpaper/current
+ln -sf $WALLPAPER_PATH $HOME/.config/hypr/wallpaper/current
 
 # Send notification
-notify-send -a rofi -i /home/thedocingeast/.config/hypr/wallpaper/current "Wallpaper Changed" "Set to: $SELECTED"
+notify-send -a rofi -i $HOME/.config/hypr/wallpaper/current "Wallpaper Changed" "Set to: $SELECTED"

@@ -97,7 +97,6 @@ plugins=(
 
 
 source $ZSH/oh-my-zsh.sh
-source $HOME/.cargo/env
 
 # User configuration
 
@@ -134,15 +133,11 @@ alias hyprconf="nvim ~/.config/hypr/hyprland.conf"
 alias wayconf="cd ~/.config/waybar"
 alias kittyconf="nvim ~/.config/kitty/kitty.conf"
 alias vencord="~/bin/vencord_install.sh"
-alias tui="conda activate tuiapps && cd ~/textui"
-alias tuirun="conda activate tuiapps && cd ~/textui && textual run --dev src/main.py"
-alias tuiconsole="conda activate tuiapps && cd ~/textui && textual console"
-alias aurorarun="conda activate aurora && cd ~/temp_mirage/src && python bot.py"
-alias auroramemory="kate ~/temp_mirage/src/dialog_memory.json"
 alias install="aura -A"
 alias uninstall="aura -R"
 alias upgradesys="sudo pacman -Syu"
 alias check="sudo pacman -Qs | grep "
+alias 2026="echo Year of Linux Desktop"
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 if command -v fastfetch &>/dev/null; then
@@ -153,3 +148,39 @@ export PATH="$PATH:/usr/share/dotnet"
 export PATH=/home/thedocingeast/miniconda3/bin:/anaconda3/bin:/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/opt/android-sdk/emulator:/opt/cuda/bin:/opt/cuda/nsight_compute:/opt/cuda/nsight_systems/bin:/var/lib/flatpak/exports/bin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/thedocingeast/miniforge3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/thedocingeast/miniforge3/etc/profile.d/conda.sh" ]; then
+        . "/home/thedocingeast/miniforge3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/thedocingeast/miniforge3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+
+# >>> mamba initialize >>>
+# !! Contents within this block are managed by 'mamba shell init' !!
+export MAMBA_EXE='/home/thedocingeast/miniforge3/bin/mamba';
+export MAMBA_ROOT_PREFIX='/home/thedocingeast/miniforge3';
+__mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__mamba_setup"
+else
+    alias mamba="$MAMBA_EXE"  # Fallback on help from mamba activate
+fi
+unset __mamba_setup
+# <<< mamba initialize <<<
+
+# The next line updates PATH for CLI.
+if [ -f '/home/thedocingeast/yandex-cloud/path.bash.inc' ]; then source '/home/thedocingeast/yandex-cloud/path.bash.inc'; fi
+
+# The next line enables shell command completion for yc.
+if [ -f '/home/thedocingeast/yandex-cloud/completion.zsh.inc' ]; then source '/home/thedocingeast/yandex-cloud/completion.zsh.inc'; fi
+
