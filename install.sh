@@ -198,7 +198,8 @@ else
 fi
 
 echo
-log "Next step: enable sddm.service if needed"
+log "Enable sddm.service"
 read -r -p "Press Enter to finish..."
+sudo ln -sf /etc/systemd/system/display-manager.service /usr/lib/systemd/system/sddm.service
 
 log "Installation complete 🎉"
