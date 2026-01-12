@@ -82,12 +82,11 @@ create_menu_entries() {
 # Show rofi menu and get selection
 SELECTED=$(
   create_menu_entries | rofi -dmenu -i \
-    -theme-str 'window {width: 60%; location: south; anchor: south;}' \
+    -theme-str 'window {width: 70%; location: south; anchor: south; y-offset: 30px;}' \
     -theme-str 'inputbar { enabled: false; }' \
-    -theme-str 'listview {columns: 6; lines: 1;}' \
-    -theme-str 'element {padding: 5px; orientation: vertical;}' \
-    -theme-str 'element-icon {size: 15em;}' \
-    -theme-str 'element-text {vertical-align: 0.5;}' \
+    -theme-str 'listview {columns: 4; lines: 1; padding: 0;}' \
+    -theme-str 'element {padding: 1px; orientation: vertical;}' \
+    -theme-str 'element-icon {size: 10em;}' \
     -show-icons
 )
 
