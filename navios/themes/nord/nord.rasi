@@ -7,7 +7,6 @@ configuration {
   display-drun: "";
   display-combi: "Apps:";
   display-emoji: "Emoji:";
-  display-calc: "Calc:";
   font: "Monaspace Krypton Frozen Medium, Symbola 12, Noto Color Emoji 12";
   modi: "combi,emoji,calc";
   show-icons: true;
@@ -92,7 +91,7 @@ textbox {
 }
 
 listview {
-  lines: 6;
+  lines: 4;
   columns: 2;
   border-color: @separatorcolor;
   spacing: 0%;
