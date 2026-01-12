@@ -9,6 +9,8 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+source ~/powerlevel10k/powerlevel10k.zsh-theme
+
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 export PATH=$HOME/miniconda3/bin:$PATH
@@ -183,4 +185,3 @@ if [ -f '/home/thedocingeast/yandex-cloud/path.bash.inc' ]; then source '/home/t
 # The next line enables shell command completion for yc.
 if [ -f '/home/thedocingeast/yandex-cloud/completion.zsh.inc' ]; then source '/home/thedocingeast/yandex-cloud/completion.zsh.inc'; fi
 
-source ~/powerlevel10k/powerlevel10k.zsh-theme
