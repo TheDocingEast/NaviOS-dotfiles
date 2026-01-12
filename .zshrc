@@ -21,7 +21,6 @@ export EDITOR='nvim'
 # load a random theme each time Oh My Zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="powerlevel10k/powerlevel10k"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -184,3 +183,4 @@ if [ -f '/home/thedocingeast/yandex-cloud/path.bash.inc' ]; then source '/home/t
 # The next line enables shell command completion for yc.
 if [ -f '/home/thedocingeast/yandex-cloud/completion.zsh.inc' ]; then source '/home/thedocingeast/yandex-cloud/completion.zsh.inc'; fi
 
+source ~/powerlevel10k/powerlevel10k.zsh-theme

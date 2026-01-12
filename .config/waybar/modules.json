@@ -4,7 +4,6 @@
     "modules": [
       "cpu",
       "temperature",
-      "custom/gpu",
       "memory",
       "network",
       "hyprland/language",
@@ -23,17 +22,18 @@
       "mpris"
     ]
   },
-  "group/datetime": {
+  "group/info": {
     "orientation": "horizontal",
     "modules": [
-      "clock"
+      "clock",
+      "battery"
     ]
   },
   "custom/navios": {
     "format": "✦",
     "tooltip": true,
     "tooltip-format": "Navigate in life",
-    "on-click": "~/bin/rofi.sh"
+    "on-click": "~/rofi.sh"
   },
   "hyprland/workspaces": {
     "disable-scroll": true,
@@ -74,7 +74,7 @@
     "tooltip-format": "{ifname} via {gwaddr} 󰲝",
     "format-linked": "{ifname} (No IP) 󰖩",
     "format-disconnected": "Disconnected 󰲜",
-    "on-click": "nm-connection-editor"
+    "on-click": "connex"
   },
   "cpu": {
     "format": " {usage}%",

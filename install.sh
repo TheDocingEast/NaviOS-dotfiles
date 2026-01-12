@@ -23,6 +23,13 @@ if [ -e "$ZSHRC_DEST" ] || [ -L "$ZSHRC_DEST" ]; then
   mv "$ZSHRC_DEST" "$ZSHRC_DEST$BACKUP_SUFFIX"
 fi
 
+OHMYZSH_DEST="$HOME/.oh-my-zsh"
+
+if [ -e "$OHMYZSH_DEST" ] || [ -L "$OHMYZSH_DEST" ]; then
+  echo "Backing up existing $OHMYZSH_DEST to $OHMYZSH_DEST$BACKUP_SUFFIX"
+  mv "$OHMYZSH_DEST" "$OHMYZSH_DEST$BACKUP_SUFFIX"
+fi
+
 echo "Start GNU Stow"
 stow .
 

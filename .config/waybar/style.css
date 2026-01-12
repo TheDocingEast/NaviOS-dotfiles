@@ -102,7 +102,7 @@ window#waybar {
 /*Groups style*/
 #tooltip,
 #sound,
-#datetime {
+#info {
   border-radius: 7px;
   padding: 0 4px;
   background: #1f262f;
@@ -114,7 +114,7 @@ window#waybar {
 /*Groups style for hover state*/
 #tooltip:hover,
 #sound:hover,
-#datetime:hover {
+#info:hover {
   border-top: double 2 #81a1c1;
   border-bottom: double 2 #81a1c1;
   transition: border .4s;

@@ -13,9 +13,9 @@
     "hyprland/workspaces"
   ],
   "modules-center": [
-    "group/datetime",
+    "group/info",
     "group/sound",
-    "custom/brightness"
+    "brightness"
   ],
   "modules-right": [
     "group/tooltip"
