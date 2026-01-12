@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG_DIR="$HOME/.config"
 BACKUP_SUFFIX=".bak"
 SDDM_DIR="/usr/share/sddm"
 SCRIPT_ROOT="$(pwd)"
+
+ICONS_DIR="$HOME/.icons"
+THEMES_DIR="$HOME/.themes"
 
 log() {
   printf "[+] %s\n" "$1"
@@ -39,7 +41,7 @@ require_cmd stow
 
 log "Launch under $HOME"
 
-mkdir -p "$CONFIG_DIR"
+mkdir -p "$HOME/.config" "$ICONS_DIR" "$THEMES_DIR"
 
 # ─────────────────────────────────────────────
 # Backup ~/.config/*
@@ -48,7 +50,7 @@ mkdir -p "$CONFIG_DIR"
 if [ -d "$SCRIPT_ROOT/.config" ]; then
   for dir in "$SCRIPT_ROOT/.config/"*; do
     name="$(basename "$dir")"
-    backup_if_exists "$CONFIG_DIR/$name"
+    backup_if_exists "$HOME/.config/$name"
   done
 fi
 
@@ -94,6 +96,74 @@ clone_plugin https://github.com/zsh-users/zsh-syntax-highlighting zsh-syntax-hig
 
 log "Running GNU Stow"
 stow .
+
+# ─────────────────────────────────────────────
+# Nordzy hyprcursors
+# ─────────────────────────────────────────────
+
+NORDZY_DIR="$ICONS_DIR/Nordzy-hyprcursors"
+
+if [ ! -d "$NORDZY_DIR" ]; then
+  log "Installing Nordzy hyprcursors"
+  git clone --depth=1 \
+    https://github.com/guillaumeboehm/Nordzy-cursors.git \
+    /tmp/Nordzy-cursors
+
+  cp -r /tmp/Nordzy-cursors/hyprcursors/themes/* "$ICONS_DIR/"
+  rm -rf /tmp/Nordzy-cursors
+else
+  warn "Nordzy cursors already installed, skip"
+fi
+
+# ─────────────────────────────────────────────
+# Nordic GTK theme
+# ─────────────────────────────────────────────
+
+if [ ! -d "$THEMES_DIR/Nordic" ]; then
+  log "Installing Nordic GTK theme"
+  git clone --depth=1 \
+    https://github.com/EliverLara/Nordic.git \
+    "$THEMES_DIR/Nordic"
+else
+  warn "Nordic theme already exists, skip"
+fi
+
+# ─────────────────────────────────────────────
+# Nordzy icon theme (official installer)
+# ─────────────────────────────────────────────
+
+NORDZY_ICON_PATH="$HOME/.local/share/icons/Nordzy"
+
+if [ ! -d "$NORDZY_ICON_PATH" ]; then
+  log "Installing Nordzy icon theme (official installer)"
+
+  TMP_DIR="$(mktemp -d)"
+  git clone --depth=1 https://github.com/MolassesLover/Nordzy-icon.git "$TMP_DIR/Nordzy-icon"
+
+  (
+    cd "$TMP_DIR/Nordzy-icon"
+    chmod +x install.sh
+
+    # Local install, default variants (safe & complete)
+    ./install.sh
+  )
+
+  rm -rf "$TMP_DIR"
+else
+  warn "Nordzy icon theme already installed, skip"
+fi
+
+# ─────────────────────────────────────────────
+# Apply GTK theme (GNOME)
+# ─────────────────────────────────────────────
+
+if command -v gsettings >/dev/null 2>&1; then
+  log "Applying GTK theme via gsettings"
+  gsettings set org.gnome.desktop.interface gtk-theme "Nordic"
+  gsettings set org.gnome.desktop.wm.preferences theme "Nordic"
+else
+  warn "gsettings not found, skip GTK theme apply"
+fi
 
 # ─────────────────────────────────────────────
 # SDDM
