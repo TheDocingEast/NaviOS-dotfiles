@@ -7,7 +7,7 @@
 WALLPAPER_DIR="$HOME/.config/hypr/wallpaper"
 CURRENT_WALLPAPER="$HOME/.config/hypr/wallpaper/.current_wallpaper"
 CACHE_DIR="$HOME/.cache/wallpaper-selector"
-THUMBNAIL_SIZE="600x600"
+THUMBNAIL_SIZE="800x800"
 
 # Create directories if they don't exist
 mkdir -p "$WALLPAPER_DIR"
@@ -61,9 +61,7 @@ fi
 # Create rofi menu with image preview
 show_menu() {
   echo "$WALLPAPERS" | rofi -dmenu -i \
-    -p "Select Wallpaper" \
     -theme-str 'window {width: 50%;}' \
-    -theme-str 'listview {columns: 1;}' \
     -show-icons \
     -preview-command 'echo -ne "\x00icon\x1f{1}" && cat "$HOME/.cache/wallpaper-selector/$(basename {1} | sed "s/\.[^.]*$/.png/")"' \
     -display-columns 1
@@ -82,12 +80,16 @@ create_menu_entries() {
 }
 
 # Show rofi menu and get selection
-SELECTED=$(create_menu_entries | rofi -dmenu -i -p "Select Wallpaper" \
-  -theme-str 'window {width: 60%; height: 60%;}' \
-  -theme-str 'listview {columns: 5; lines: 2;}' \
-  -theme-str 'element {padding: 10px; orientation: vertical;}' \
-  -theme-str 'element-icon {size: 10em;}' \
-  -show-icons)
+SELECTED=$(
+  create_menu_entries | rofi -dmenu -i \
+    -theme-str 'window {width: 60%; location: south; anchor: south;}' \
+    -theme-str 'inputbar { enabled: false; }' \
+    -theme-str 'listview {columns: 6; lines: 1;}' \
+    -theme-str 'element {padding: 5px; orientation: vertical;}' \
+    -theme-str 'element-icon {size: 15em;}' \
+    -theme-str 'element-text {vertical-align: 0.5;}' \
+    -show-icons
+)
 
 # Exit if nothing was selected
 if [ -z "$SELECTED" ]; then
