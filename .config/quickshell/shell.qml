@@ -238,6 +238,11 @@ ShellRoot {
         }
     }
 
+    SystemClock {
+        id: clock
+        precision: SystemClock.Seconds
+    }
+
     // Battery — every 30 s (changes slowly)
     Timer {
         interval: 2000
@@ -495,7 +500,7 @@ ShellRoot {
 
                             Text {
                                 id: clockText
-                                text: Qt.formatDateTime(new Date(), "ddd dd.MM.yyyy HH:mm")
+                                text: Qt.formatDateTime(clock.date, "ddd dd.MM.yyyy HH:mm")
                                 color: root.colCyan
                                 font.pixelSize: root.fontSize
                                 font.family: root.fontFamily
@@ -618,20 +623,27 @@ ShellRoot {
                             }
 
                             // GPU
-                            Text {
-                                text: "GPU: " + gpuUsage + "%"
-                                color: gpuUsage > 80 ? root.colRed : gpuUsage > 50 ? root.colYellow : root.colCyan
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
 
-                                MouseArea {
-                                    id: btop
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Quickshell.execDetached(["kitty", "btop"])
+                            Rectangle {
+                                Layout.rightMargin: 8
+                                color: btop.containsMouse ? root.colMuted : "transparent"
+                                Layout.preferredWidth: 80
+                                Layout.preferredHeight: 24
+                                Text {
+                                    text: "GPU: " + gpuUsage + "%"
+                                    anchors.centerIn: parent
+                                    color: gpuUsage > 80 ? root.colRed : gpuUsage > 50 ? root.colYellow : root.colCyan
+                                    font.pixelSize: root.fontSize
+                                    font.family: root.fontFamily
+                                    font.bold: true
+
+                                    MouseArea {
+                                        id: btop
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: Quickshell.execDetached(["kitty", "btop"])
+                                    }
                                 }
                             }
 
@@ -724,7 +736,6 @@ ShellRoot {
                                 Layout.preferredWidth: 24
                                 Layout.preferredHeight: 24
                                 Layout.rightMargin: 4
-                                radius: 4
                                 color: powerMouse.containsMouse ? root.colMuted : "transparent"
 
                                 Behavior on color {
