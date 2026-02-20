@@ -4,6 +4,7 @@
     "modules": [
       "cpu",
       "temperature",
+      "custom/gpu",
       "memory",
       "network",
       "hyprland/language",

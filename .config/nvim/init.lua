@@ -4,3 +4,5 @@ require("config.lazy")
 require("lazy").setup("plugins")
 require("lsp.qmlls")
 require("lsp.hyprl")
+vim.opt.spell = true
+vim.opt.spelllang = "ru,en"

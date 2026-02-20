@@ -9,11 +9,11 @@ ICONS_DIR="$HOME/.icons"
 THEMES_DIR="$HOME/.themes"
 
 log() {
-  printf "[+] %s\n" "$1"
+  printf "\e[0;32m[+] %s\n\e[0m" "$1"
 }
 
 warn() {
-  printf "[!] %s\n" "$1"
+  printf "\e[0;31m[!] %s\n\e[0m" "$1"
 }
 
 backup_if_exists() {
@@ -109,8 +109,9 @@ if [ ! -d "$NORDZY_DIR" ]; then
     https://github.com/guillaumeboehm/Nordzy-cursors.git \
     /tmp/Nordzy-cursors
 
-  cp -r /tmp/Nordzy-cursors/hyprcursors/themes/* "$ICONS_DIR/"
-  rm -rf /tmp/Nordzy-cursors
+  cd /tmp/Nordzy-cursors
+  chmod +x install.sh
+  ./install.sh --hyprcursors
 else
   warn "Nordzy cursors already installed, skip"
 fi
@@ -161,9 +162,40 @@ if command -v gsettings >/dev/null 2>&1; then
   log "Applying GTK theme via gsettings"
   gsettings set org.gnome.desktop.interface gtk-theme "Nordic"
   gsettings set org.gnome.desktop.wm.preferences theme "Nordic"
+  gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 else
   warn "gsettings not found, skip GTK theme apply"
 fi
+
+# ─────────────────────────────────────────────
+# Fonts
+# ─────────────────────────────────────────────
+
+read -r -p "Are you want to install Monaspace fonts? [y/N]" response
+case "$response" in
+[yY][eE][sS] | [yY])
+  log "Git clone Monaspace repo"
+  git clone https://github.com/githubnext/monaspace.git ./monaspace
+  sudo cp -r ./monaspace/fonts /usr/share/fonts
+  sudo mv /usr/share/fonts/fonts /usr/share/fonts/monaspace
+  rm -rf ./monaspace
+  ;;
+esac
+
+read -r -p "Are you want to install Iosevka fonts? [y/N]" response
+case "$response" in
+[yY][eE][sS] | [yY])
+  log "Install Iosevka Arch repo..."
+  sudo pacman -Sy ttc-iosevka
+  ;;
+esac
+
+log "Installing default fonts..."
+sudo pacman -Sy --needed \
+  woff2-font-awesome \
+  ttf-meslo-nerd \
+  noto-fonts-emoji \
+  ttf-dejavu
 
 # ─────────────────────────────────────────────
 # SDDM
@@ -199,7 +231,7 @@ fi
 
 echo
 log "Enable sddm.service"
-read -r -p "Press Enter to finish..."
+read -r -p "Press Enter..."
 sudo ln -sf /etc/systemd/system/display-manager.service /usr/lib/systemd/system/sddm.service
 
 log "Installation complete 🎉"

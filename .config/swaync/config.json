@@ -81,7 +81,8 @@
     },
     "mpris": {
       "blacklist": [
-        "firefox"
+        "firefox",
+        "chromium"
       ],
       "autohide": false,
       "show-album-art": "always",

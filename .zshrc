@@ -93,6 +93,7 @@ plugins=(
   command-not-found
   zsh-syntax-highlighting
   zsh-autosuggestions
+  archlinux
 )
 
 
@@ -138,6 +139,7 @@ alias install="aura -A"
 alias uninstall="aura -R"
 alias upgradesys="sudo pacman -Syu"
 alias check="sudo pacman -Qs | grep "
+alias rs="rsync"
 alias 2026="echo Year of Linux Desktop"
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
@@ -149,6 +151,13 @@ export PATH="$PATH:/usr/share/dotnet"
 export PATH=/home/thedocingeast/miniconda3/bin:/anaconda3/bin:/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/opt/android-sdk/emulator:/opt/cuda/bin:/opt/cuda/nsight_compute:/opt/cuda/nsight_systems/bin:/var/lib/flatpak/exports/bin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.flutter/bin:$PATH"
+export CHROME_EXECUTABLE=/usr/bin/chromium
+export ANTHROPIC_AUTH_TOKEN=ollama
+export ANTHROPIC_API_KEY=""
+export ANTHROPIC_BASE_URL=http://localhost:11434
+export PATH="$HOME/.local/bin:$PATH"
+export CLAUDE_MODEL=qwen3-coder
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
@@ -184,4 +193,6 @@ if [ -f '/home/thedocingeast/yandex-cloud/path.bash.inc' ]; then source '/home/t
 
 # The next line enables shell command completion for yc.
 if [ -f '/home/thedocingeast/yandex-cloud/completion.zsh.inc' ]; then source '/home/thedocingeast/yandex-cloud/completion.zsh.inc'; fi
+
+export PATH="$HOME/.npm-global/bin:$PATH"
 

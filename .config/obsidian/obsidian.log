@@ -1568,3 +1568,42 @@
 2025-12-31 18:30:59 Success.
 2025-12-31 18:30:59 Latest version is 1.10.6
 2025-12-31 18:30:59 App is up to date.
+2026-01-14 16:02:16 Loading main app package /usr/lib/obsidian/obsidian.asar
+2026-01-14 16:02:17 Checking for update using Github
+2026-01-14 16:02:17 Success.
+2026-01-14 16:02:17 Latest version is 1.11.4
+2026-01-14 16:02:17 Downloading update from https://github.com/obsidianmd/obsidian-releases/releases/download/v1.11.4/obsidian-1.11.4.asar.gz
+2026-01-14 16:02:22 Verifying hash & signature. Size= 8769455
+2026-01-14 16:02:22 Saving file
+2026-01-14 16:02:22 Update complete.
+2026-01-15 19:36:47 Loading updated app package /home/thedocingeast/.config/obsidian/obsidian-1.11.4.asar
+2026-01-15 19:36:47 Checking for update using Github
+2026-01-15 19:36:48 Success.
+2026-01-15 19:36:48 Latest version is 1.11.4
+2026-01-15 19:36:48 App is up to date.
+2026-01-25 19:55:41 Loading main app package /usr/lib/obsidian/obsidian.asar
+2026-01-25 19:55:41 Checking for update using Github
+2026-01-25 19:55:42 Success.
+2026-01-25 19:55:42 Latest version is 1.11.5
+2026-01-25 19:55:42 Downloading update from https://github.com/obsidianmd/obsidian-releases/releases/download/v1.11.5/obsidian-1.11.5.asar.gz
+2026-01-25 19:55:44 Verifying hash & signature. Size= 8771203
+2026-01-25 19:55:44 Saving file
+2026-01-25 19:55:44 Update complete.
+2026-02-07 20:05:11 Loading main app package /usr/lib/obsidian/obsidian.asar
+2026-02-07 20:05:12 Checking for update using Github
+2026-02-07 20:05:12 Success.
+2026-02-07 20:05:12 Latest version is 1.11.7
+2026-02-07 20:05:12 Downloading update from https://github.com/obsidianmd/obsidian-releases/releases/download/v1.11.7/obsidian-1.11.7.asar.gz
+2026-02-07 20:05:16 Verifying hash & signature. Size= 8773752
+2026-02-07 20:05:16 Saving file
+2026-02-07 20:05:16 Update complete.
+2026-02-08 17:39:19 Loaded main app package /usr/lib/obsidian/obsidian.asar
+2026-02-08 17:39:19 Checking for update using Github
+2026-02-08 17:39:20 Success.
+2026-02-08 17:39:20 Latest version is 1.11.7
+2026-02-08 17:39:20 App is up to date.
+2026-02-11 14:12:30 Loaded main app package /usr/lib/obsidian/obsidian.asar
+2026-02-11 14:12:30 Checking for update using Github
+2026-02-11 14:12:31 Success.
+2026-02-11 14:12:31 Latest version is 1.11.7
+2026-02-11 14:12:31 App is up to date.
