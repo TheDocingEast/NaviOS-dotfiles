@@ -976,7 +976,7 @@ open_url_with default
 #: start_resizing_window. The cells value is used for horizontal
 #: resizing, and the lines value is used for vertical resizing.
 
- window_border_width 1pt
+# window_border_width 1pt
 
 #: The width of window borders. Can be either in pixels (px) or pts
 #: (pt). Values in pts will be rounded to the nearest number of pixels
@@ -984,7 +984,7 @@ open_url_with default
 #: to be pts. Note that borders are displayed only when more than one
 #: window is visible. They are meant to separate multiple windows.
 
- draw_minimal_borders yes
+# draw_minimal_borders no
 
 #: Draw only the minimum borders needed. This means that only the
 #: borders that separate the window from a neighbor are drawn. Note
@@ -1050,7 +1050,7 @@ open_url_with default
 #: Fade the text in inactive windows by the specified amount (a number
 #: between zero and one, with zero being fully faded).
 
- hide_window_decorations
+ hide_window_decorations titlebar-and-corners
 
 #: Hide the window decorations (title-bar and window borders) with
 #: yes. On macOS, titlebar-only and titlebar-and-corners can be used
@@ -1147,22 +1147,22 @@ open_url_with default
 
 #: Tab bar {{{
 
-# tab_bar_edge bottom
+ tab_bar_edge bottom
 
 #: The edge to show the tab bar on, top or bottom.
 
-# tab_bar_margin_width 0.0
+ tab_bar_margin_width 0.0
 
 #: The margin to the left and right of the tab bar (in pts).
 
-# tab_bar_margin_height 0.0 0.0
+ tab_bar_margin_height 0.0 1.0
 
 #: The margin above and below the tab bar (in pts). The first number
 #: is the margin between the edge of the OS Window and the tab bar.
 #: The second number is the margin between the tab bar and the
 #: contents of the current tab.
 
-# tab_bar_style fade
+ tab_bar_style slant
 
 #: The tab bar style, can be one of:
 
@@ -1188,7 +1188,7 @@ open_url_with default
 #:     a mapping for the select_tab action which presents you with a list of
 #:     tabs and allows for easy switching to a tab.
 
-# tab_bar_align left
+ tab_bar_align center
 
 #: The horizontal alignment of the tab bar, can be one of: left,
 #: center, right.
@@ -1198,7 +1198,7 @@ open_url_with default
 #: The minimum number of tabs that must exist before the tab bar is
 #: shown.
 
-# tab_switch_strategy previous
+ tab_switch_strategy left
 
 #: The algorithm to use when switching to a tab when the current tab
 #: is closed. The default of previous will switch to the last used
@@ -1206,7 +1206,7 @@ open_url_with default
 #: closed tab. A value of right will switch to the tab to the right of
 #: the closed tab. A value of last will switch to the right-most tab.
 
-# tab_fade 0.25 0.5 0.75 1
+tab_fade 0.15 0.45 0.75
 
 #: Control how each tab fades into the background when using fade for
 #: the tab_bar_style. Each number is an alpha (between zero and one)
@@ -1215,7 +1215,7 @@ open_url_with default
 #: can change the number of cells used by adding/removing entries to
 #: this list.
 
-# tab_separator " ┇"
+ tab_separator "┇"
 
 #: The separator between tabs in the tab bar when using separator as
 #: the tab_bar_style.
@@ -1226,7 +1226,7 @@ open_url_with default
 #: using powerline as the tab_bar_style, can be one of: angled,
 #: slanted, round.
 
-# tab_activity_symbol none
+ tab_activity_symbol "↻"
 
 #: Some text or a Unicode symbol to show on the tab if a window in the
 #: tab that does not have focus has some activity. If you want to use
@@ -1238,7 +1238,7 @@ open_url_with default
 #: The maximum number of cells that can be used to render the text in
 #: a tab. A value of zero means that no limit is applied.
 
-# tab_title_template "{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}"
+tab_title_template "{fmt.fg.magenta}{bell_symbol}{fmt.fg.cyan}{activity_symbol}{fmt.fg.tab}{tab.active_exe} | {title}"
 
 #: A template to render the tab title. The default just renders the
 #: title with optional symbols for bell and activity. If you wish to
@@ -1323,7 +1323,7 @@ open_url_with default
 
 #: The foreground and background colors.
 
-background_opacity 0.55
+ background_opacity 0.9
 
 #: The opacity of the background. A number between zero and one, where
 #: one is opaque and zero is fully transparent. This will only work if
@@ -1354,7 +1354,7 @@ background_opacity 0.55
 #: will only work if dynamic_background_opacity was enabled in the
 #: original config.
 
- background_blur 30
+background_blur 64
 #: Set to a positive value to enable background blur (blurring of the
 #: visuals behind a transparent window) on platforms that support it.
 #: Only takes effect when background_opacity is less than one. On
@@ -1365,7 +1365,7 @@ background_opacity 0.55
 #: platform implements it, so use with care. Currently supported on
 #: macOS and KDE.
 
-# transparent_background_colors #2E3440
+transparent_background_colors #2E3440
 
 #: A space separated list of upto 7 colors, with opacity. When the
 #: background color of a cell matches one of these colors, it is
@@ -1384,7 +1384,7 @@ background_opacity 0.55
 
 #:     transparent_background_colors red@0.5 #00ff00@0.3
 
-# dynamic_background_opacity yes
+ dynamic_background_opacity no
 
 #: Allow changing of the background_opacity dynamically, using either
 #: keyboard shortcuts (increase_background_opacity and
@@ -2793,7 +2793,7 @@ background_opacity 0.55
 
 
 # BEGIN_KITTY_FONTS
-font_family      family="FiraCode Nerd Font Mono"
+font_family      family='Monaspace Krypton Var' variable_name=MonaspaceKryptonVarExtraLight wght=400 wdth=100 slnt=0 features='+ss01 +ss02 +ss03 +ss05 +ss07 +ss08 +ss09'
 bold_font        auto
 italic_font      auto
 bold_italic_font auto

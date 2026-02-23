@@ -1,4 +1,7 @@
 import Quickshell
+import Quickshell.Wayland
+import QtQuick.Controls
+import QtQuick.Layouts
 import QtQuick
 
 PanelWindow {
@@ -16,38 +19,20 @@ PanelWindow {
 
     Rectangle {
         anchors.fill: parent
-        color: "#141c26"
-        Grid {
-            columns: 3
-            spacing: 3
-            Rectangle {
-                width: 100
-                height: 100
-                anchors.left: controlMenu.right
-                anchors.margins: 2
-                clip: true
+        color: colBg
 
-                Image {
-                    id: avatar
-                    anchors.fill: parent
-                    source: "file:///home/thedocingeast/.face"
-                }
-            }
+        ColumnLayout {
+            spacing: 2
+            anchors.fill: parent
 
             Rectangle {
-                color: "blue"
-                width: 100
-                height: 100
-            }
-            Rectangle {
-                color: "cyan"
-                width: 100
-                height: 100
-            }
-            Rectangle {
-                color: "magenta"
-                width: 100
-                height: 100
+                Layout.margins: 10
+                Layout.preferredHeight: parent.height - 20
+                Layout.preferredWidth: parent.width - 20
+                border.color: colBlue
+                border.width: 4
+                color: "transparent"
+                radius: 6
             }
         }
     }

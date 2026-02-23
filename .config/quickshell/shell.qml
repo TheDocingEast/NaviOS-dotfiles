@@ -10,13 +10,14 @@ import Quickshell.DBusMenu
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
 
-import "modules"
+import "./modules"
+import "./services"
 
 ShellRoot {
     id: root
 
     // ── Theme ─────────────────────────────────────────────────────────────
-    property color colBg: "#141c26"
+    property color colBg: "#2e3440"
     property color colFg: "#d8dee9"
     property color colMuted: "#4c566a"
     property color colCyan: "#8fbcbb"
@@ -24,6 +25,7 @@ ShellRoot {
     property color colRed: "#bf616a"
     property color colYellow: "#ebcb8b"
     property color colBlue: "#5e81ac"
+    property color colLightBlue: "#81a1c1"
     property color colGreen: "#a3be8c"
     property color colBrown: "#b48ead"
 
@@ -32,13 +34,19 @@ ShellRoot {
     property int fontSize: 16
 
     // ── State ─────────────────────────────────────────────────────────────
-    property string kernelVersion: "Linux"
+    property string kernelVersion: "unknown"
     property int cpuUsage: 0
     property int memUsage: 0
     property int diskUsage: 0
     property string activeWindow: ""
+    property string activeWindowApp: ""
     property int batteryPercent: 0
     property string batteryState: "discharging"
+    property var keyboardLayouts: {
+        "Russian": "RU",
+        "English (US)": "EN"
+    }
+    property string keyboardLayout: ""
 
     // ── CPU delta tracking ────────────────────────────────────────────────
     property var lastCpuIdle: 0
@@ -184,6 +192,31 @@ ShellRoot {
     }
 
     Process {
+        id: windowAppProc
+        command: ["sh", "-c", "hyprctl activewindow -j | jq -r '.class // empty'"]
+        stdout: SplitParser {
+            onRead: data => {
+                if (data && data.trim())
+                    activeWindowApp = data.trim();
+            }
+        }
+        Component.onCompleted: running = true
+    }
+
+    Process {
+        id: keyboardProc
+        command: ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main == true) | .active_keymap'"]
+        stdout: SplitParser {
+            onRead: data => {
+                if (data && data.trim());
+                // keyboardLayout = data.trim()
+                keyboardLayout = keyboardLayouts[data.trim()];
+            }
+        }
+        Component.onCompleted: running = true
+    }
+
+    Process {
         id: netProc
         command: ["sh", "-c", "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev | grep connected"]
         stdout: SplitParser {
@@ -196,7 +229,7 @@ ShellRoot {
                 }
 
                 var parts = data.trim().split(':');
-                if (parts.length >= 4 && (parts[1] === 'ethernet' || parts[1] === 'wifi') && (parts[2] === 'подключено' || parts[2] === 'connected')) {
+                if (parts.length >= 4 && (parts[1] === 'ethernet' || parts[1] === 'wifi') && parts[2] === 'connected') {
                     networkConnected = true;
                     if (parts[1] === 'ethernet') {
                         ipProc.running = true;
@@ -258,6 +291,8 @@ ShellRoot {
         target: Hyprland
         function onRawEvent(event) {
             windowProc.running = true;
+            windowAppProc.running = true;
+            keyboardProc.running = true;
         }
     }
 
@@ -272,11 +307,6 @@ ShellRoot {
     }
 
     // ── Bar ───────────────────────────────────────────────────────────────
-
-    ControlMenu {
-        id: controlMenu
-        screen: Quickshell.screens[0]  // первый экран
-    }
 
     Variants {
         model: Quickshell.screens
@@ -294,6 +324,13 @@ ShellRoot {
             implicitHeight: 50
             color: root.colBg
 
+            ControlMenu {
+                id: controlMenu
+                screen: Quickshell.screens[0]  // первый экран
+            }
+            Weather {
+                id: weather
+            }
             // ── Volume OSD popup ──────────────────────────────────────────
             PopupWindow {
                 id: volOsd
@@ -328,7 +365,7 @@ ShellRoot {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: volume.level === 0 ? "󰝟" : volume.level < 50 ? "󰖀" : "󰕾"
-                            color: root.colPurple
+                            color: volume.level > 90 ? colRed : volume.level > 50 ? colYellow : colCyan
                             font.pixelSize: 16
                             font.family: root.fontFamily
                         }
@@ -344,7 +381,7 @@ ShellRoot {
                                 width: parent.width * (volume.level / 100)
                                 height: parent.height
                                 radius: parent.radius
-                                color: root.colPurple
+                                color: volume.level > 90 ? colRed : volume.level > 50 ? colYellow : colCyan
                                 Behavior on width {
                                     NumberAnimation {
                                         duration: 80
@@ -408,10 +445,6 @@ ShellRoot {
                                 }
                             }
 
-                            Item {
-                                width: 8
-                            }
-
                             Repeater {
                                 readonly property int maxOccupied: {
                                     let max = 0;
@@ -443,8 +476,8 @@ ShellRoot {
 
                                     Text {
                                         text: parent.wsId
-                                        color: parent.isActive ? root.colCyan : parent.hasWindows ? root.colFg : root.colMuted
-                                        font.pixelSize: root.fontSize
+                                        color: parent.isActive ? colLightBlue : parent.hasWindows ? colFg : colMuted
+                                        font.pixelSize: fontSize
                                         font.family: root.fontFamily
                                         font.bold: true
                                         anchors.centerIn: parent
@@ -453,7 +486,7 @@ ShellRoot {
                                     Rectangle {
                                         width: 20
                                         height: 3
-                                        color: parent.isActive ? root.colPurple : root.colBg
+                                        color: parent.isActive ? colBlue : colBg
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         anchors.bottom: parent.bottom
                                         Behavior on color {
@@ -470,17 +503,34 @@ ShellRoot {
                                 }
                             }
 
-                            // Active window
-                            Text {
-                                text: activeWindow
+                            ColumnLayout {
+                                Layout.preferredHeight: parent.height
                                 Layout.fillWidth: true
-                                color: root.colBrown
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
-                                Layout.leftMargin: 8
-                                elide: Text.ElideRight
-                                maximumLineCount: 1
+                                spacing: 0
+
+                                // Active window app
+                                Text {
+                                    text: activeWindowApp
+                                    Layout.fillWidth: true
+                                    color: colBlue
+                                    font.pixelSize: fontSize - 4
+                                    font.family: fontFamily
+                                    font.bold: true
+                                    Layout.leftMargin: 8
+                                    elide: Text.ElideRight
+                                }
+
+                                // Active window
+                                Text {
+                                    text: activeWindow
+                                    Layout.fillWidth: true
+                                    color: colLightBlue
+                                    font.pixelSize: fontSize
+                                    font.family: fontFamily
+                                    font.bold: true
+                                    Layout.leftMargin: 8
+                                    elide: Text.ElideRight
+                                }
                             }
                         }
                     }
@@ -500,10 +550,10 @@ ShellRoot {
 
                             Text {
                                 id: clockText
-                                text: Qt.formatDateTime(clock.date, "ddd dd.MM.yyyy HH:mm")
-                                color: root.colCyan
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
+                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
+                                color: colFg
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
                                 font.bold: true
                             }
 
@@ -534,7 +584,6 @@ ShellRoot {
                                         width: 20
                                         height: 20
 
-                                        // Выделение для NeedsAttention
                                         layer.enabled: modelData.status === Status.NeedsAttention
                                     }
 
@@ -565,6 +614,43 @@ ShellRoot {
                                     }
                                 }
                             }
+
+                            // Battery
+                            Text {
+                                readonly property UPowerDevice battery: UPower.displayDevice
+                                text: {
+                                    if (battery.isLaptopBattery) {
+                                        const s = battery.state;
+                                        const p = Math.round(battery.percentage * 100);
+                                        if (s === UPowerDeviceState.Charging)
+                                            if (p > 80)
+                                                return "󰂊 " + p + "%";
+                                        if (p > 60)
+                                            return "󰂉 " + p + "%";
+                                        if (p > 40)
+                                            return "󰂈 " + p + "%";
+                                        if (p > 20)
+                                            return "󰂆 " + p + "%";
+                                        return "󰢜 " + p + "%";
+                                        if (s === UPowerDeviceState.FullyCharged)
+                                            return "󰁹 " + p + "%";
+                                        if (p > 80)
+                                            return "󰂀 " + p + "%";
+                                        if (p > 60)
+                                            return "󰁿 " + p + "%";
+                                        if (p > 40)
+                                            return "󰁾 " + p + "%";
+                                        if (p > 20)
+                                            return "󰁽 " + p + "%";
+                                        return "󰁻 " + p + "%";
+                                    }
+                                }
+                                color: battery.percentage <= 0.15 ? colRed : battery.percentage <= 0.4 ? colYellow : colGreen
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
+                                font.bold: true
+                                Layout.leftMargin: 4
+                            }
                         }
                     }
 
@@ -574,7 +660,7 @@ ShellRoot {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignRight
-                        Layout.preferredHeight: parent.height
+                        Layout.preferredHeight: parent.height - 6
 
                         color: "transparent"
 
@@ -589,9 +675,9 @@ ShellRoot {
                             // Kernel
                             Text {
                                 text: " " + kernelVersion
-                                color: root.colBrown
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
+                                color: colBrown
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
                                 font.bold: true
                                 Layout.rightMargin: 8
                             }
@@ -600,14 +686,14 @@ ShellRoot {
                             Text {
                                 text: {
                                     if (!networkConnected)
-                                        return "󰖪";
+                                        return "󰖪 " + "Disconnected";
                                     if (networkType === "ethernet")
-                                        return "󰈀 " + networkIP;
-                                    return "󰖨 " + networkSSID;
+                                        return "󰛳 " + networkIP;
+                                    return "󰖩 " + networkSSID;
                                 }
-                                color: networkConnected ? root.colCyan : root.colRed
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
+                                color: networkConnected ? colCyan : colRed
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
                                 font.bold: true
                                 Layout.rightMargin: 8
                             }
@@ -615,44 +701,37 @@ ShellRoot {
                             // CPU
                             Text {
                                 text: "CPU: " + cpuUsage + "%"
-                                color: cpuUsage > 80 ? root.colRed : cpuUsage > 50 ? root.colYellow : root.colCyan
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
+                                color: cpuUsage > 80 ? colRed : cpuUsage > 50 ? colYellow : colCyan
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
                                 font.bold: true
                                 Layout.rightMargin: 8
                             }
 
                             // GPU
-
-                            Rectangle {
+                            Text {
+                                text: "GPU: " + gpuUsage + "%"
+                                color: gpuUsage > 80 ? colRed : gpuUsage > 50 ? colYellow : colCyan
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
+                                font.bold: true
                                 Layout.rightMargin: 8
-                                color: btop.containsMouse ? root.colMuted : "transparent"
-                                Layout.preferredWidth: 80
-                                Layout.preferredHeight: 24
-                                Text {
-                                    text: "GPU: " + gpuUsage + "%"
-                                    anchors.centerIn: parent
-                                    color: gpuUsage > 80 ? root.colRed : gpuUsage > 50 ? root.colYellow : root.colCyan
-                                    font.pixelSize: root.fontSize
-                                    font.family: root.fontFamily
-                                    font.bold: true
 
-                                    MouseArea {
-                                        id: btop
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: Quickshell.execDetached(["kitty", "btop"])
-                                    }
+                                MouseArea {
+                                    id: btop
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Quickshell.execDetached(["kitty", "btop"])
                                 }
                             }
 
                             // Memory
                             Text {
                                 text: "RAM: " + memUsage + "%"
-                                color: memUsage > 80 ? root.colRed : memUsage > 60 ? root.colYellow : root.colCyan
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
+                                color: memUsage > 80 ? colRed : memUsage > 60 ? colYellow : colCyan
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
                                 font.bold: true
                                 Layout.rightMargin: 8
                             }
@@ -660,38 +739,9 @@ ShellRoot {
                             // Disk
                             Text {
                                 text: "DISK (/): " + diskUsage + "%"
-                                color: diskUsage > 90 ? root.colRed : diskUsage > 70 ? root.colYellow : root.colCyan
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
-                            }
-
-                            // Battery
-                            Text {
-                                readonly property var battery: UPower.displayDevice
-                                text: {
-                                    if (battery.onBattery) {
-                                        const s = battery.state;
-                                        if (s === UPowerDeviceState.Charging)
-                                            return "󰂄";
-                                        if (s === UPowerDeviceState.FullyCharged)
-                                            return "󰁹";
-                                        const p = battery.percentage;
-                                        if (p > 80)
-                                            return "󰂀";
-                                        if (p > 60)
-                                            return "󰁿";
-                                        if (p > 40)
-                                            return "󰁾";
-                                        if (p > 20)
-                                            return "󰁽";
-                                        return "󰁺";
-                                    }
-                                }
-                                color: batteryPercent <= 15 ? root.colRed : batteryPercent <= 40 ? root.colYellow : root.colGreen
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
+                                color: diskUsage > 90 ? colRed : diskUsage > 70 ? colYellow : colCyan
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
                                 font.bold: true
                                 Layout.rightMargin: 8
                             }
@@ -711,8 +761,8 @@ ShellRoot {
                                         return icon + " " + volume.level + "%";
                                     }
                                     color: volume.level > 90 ? colRed : volume.level > 50 ? colYellow : colCyan
-                                    font.pixelSize: root.fontSize
-                                    font.family: root.fontFamily
+                                    font.pixelSize: fontSize
+                                    font.family: fontFamily
                                     font.bold: true
                                 }
 
@@ -728,6 +778,15 @@ ShellRoot {
                                         event.accepted = true;
                                     }
                                 }
+                            }
+
+                            Text {
+                                text: "󰌌 " + keyboardLayout
+                                color: colCyan
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
+                                font.bold: true
+                                Layout.rightMargin: 8
                             }
 
                             // Power menu button
@@ -747,9 +806,9 @@ ShellRoot {
                                 Text {
                                     anchors.centerIn: parent
                                     text: "⏻"
-                                    color: root.colRed
-                                    font.pixelSize: 18
-                                    font.family: root.fontFamily
+                                    color: colRed
+                                    font.pixelSize: fontSize + 4
+                                    font.family: fontFamily
                                 }
 
                                 MouseArea {
@@ -803,7 +862,7 @@ ShellRoot {
                                             Rectangle {
                                                 width: parent.width - 8
                                                 height: (powerMenu.height - 10) / 4
-                                                color: itemMouse.containsMouse ? root.colMuted : "transparent"
+                                                color: itemMouse.containsMouse ? colMuted : "transparent"
                                                 anchors.horizontalCenter: parent.horizontalCenter
 
                                                 Behavior on color {
@@ -818,9 +877,9 @@ ShellRoot {
                                                     Text {
                                                         text: modelData.label
                                                         horizontalAlignment: Text.AlignLeft
-                                                        color: root.colFg
-                                                        font.pixelSize: 14
-                                                        font.family: root.fontFamily
+                                                        color: colFg
+                                                        font.pixelSize: fontSize
+                                                        font.family: fontFamily
                                                         font.bold: true
                                                     }
                                                 }
