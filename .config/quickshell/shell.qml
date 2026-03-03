@@ -58,6 +58,8 @@ ShellRoot {
     property string networkType: ""
     property string networkIP: ""
     property bool networkConnected: false
+    // Weather      
+    property var weatherService: weather
 
     // ── Volume (single source of truth) ───────────────────────────────────
     QtObject {
@@ -393,85 +395,6 @@ ShellRoot {
             Weather {
                 id: weather
             }
-            // ── Volume OSD popup ──────────────────────────────────────────
-
-            PopupWindow {
-                id: volOsd
-
-                function show() {
-                    visible = true;
-                    osdHide.restart();
-                }
-
-                anchor.window: bar
-                anchor.rect.x: bar.width - width
-                anchor.rect.y: bar.implicitHeight
-                width: 180
-                height: 40
-                color: "transparent"
-                visible: false
-
-                Timer {
-                    id: osdHide
-
-                    interval: 1500
-                    repeat: false
-                    onTriggered: volOsd.visible = false
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: colBg
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: volume.level === 0 ? "󰝟" : volume.level < 50 ? "󰖀" : "󰕾"
-                            color: volume.level > 90 ? colRed : volume.level > 50 ? colYellow : colCyan
-                            font.pixelSize: 16
-                            font.family: root.fontFamily
-                        }
-
-                        Rectangle {
-                            width: 90
-                            height: 6
-                            radius: 3
-                            color: root.colMuted
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            Rectangle {
-                                width: parent.width * (volume.level / 100)
-                                height: parent.height
-                                radius: parent.radius
-                                color: volume.level > 90 ? colRed : volume.level > 50 ? colYellow : colCyan
-
-                                Behavior on width {
-                                    NumberAnimation {
-                                        duration: 80
-                                    }
-
-                                }
-
-                            }
-
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: volume.level + "%"
-                            color: root.colFg
-                            font.pixelSize: 12
-                            font.family: root.fontFamily
-                        }
-
-                    }
-
-                }
-
-            }
 
             // ── Bar content ───────────────────────────────────────────────
             Rectangle {
@@ -569,176 +492,134 @@ ShellRoot {
                     // CENTER BOX: Clock
                     // ═══════════════════════════════════════════════════════════
                     Rectangle {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredHeight: parent.height
-                        Layout.preferredWidth: 260
-                        color: "transparent"
+    Layout.alignment: Qt.AlignHCenter
+    Layout.preferredHeight: parent.height
+    Layout.preferredWidth: 260
+    color: "transparent"
 
-                        // Календарь — объявлен здесь, якорится к bar
-                        CalendarModule {
-                            id: calendarPopup
+    // Календарь — объявлен здесь, якорится к bar
+    CalendarModule {
+        id: calendarPopup
+        anchor.window: bar
+        // Центрируем под часами: x = середина бара минус половина ширины попапа
+        anchor.rect.x: (bar.width - width) / 2
+        anchor.rect.y: bar.implicitHeight
 
-                            anchor.window: bar
-                            // Центрируем под часами: x = середина бара минус половина ширины попапа
-                            anchor.rect.x: (bar.width - width) / 2
-                            anchor.rect.y: bar.implicitHeight
-                            // Передаём тему из root
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                            colBg: root.colBg
-                            colFg: root.colFg
-                            colMuted: root.colMuted
-                            colCyan: root.colCyan
-                            colBlue: root.colBlue
-                            colLBlue: root.colLightBlue
-                            colRed: root.colRed
-                        }
+        // Передаём тему из root
+        fontFamily: root.fontFamily
+        fontSize:   root.fontSize
+        colBg:      root.colBg
+        colFg:      root.colFg
+        colMuted:   root.colMuted
+        colCyan:    root.colCyan
+        colBlue:    root.colBlue
+        colLBlue:   root.colLightBlue
+        colGreen:   root.colGreen
+        colRed:     root.colRed
+        colYellow:  root.colYellow
+    }
 
-                        RowLayout {
-                            anchors.centerIn: parent
+    RowLayout {
+        anchors.centerIn: parent
 
-                            // ── Часы — теперь кликабельны ────────────────────────────────────
-                            Text {
-                                id: clockText
+        // ── Часы — теперь кликабельны ────────────────────────────────────
+        Text {
+            id: clockText
+            text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
+            color: clockMouse.containsMouse ? colLightBlue : colFg
+            font.pixelSize: fontSize
+            font.family: fontFamily
+            font.bold: true
 
-                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
-                                color: clockMouse.containsMouse ? colLightBlue : colFg
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
+            Behavior on color { ColorAnimation { duration: 120 } }
 
-                                MouseArea {
-                                    id: clockMouse
+            MouseArea {
+                id: clockMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: calendarPopup.visible = !calendarPopup.visible
+            }
+        }
 
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: calendarPopup.visible = !calendarPopup.visible
-                                }
+        Repeater {
+            model: SystemTray.items
 
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: 120
-                                    }
+            Item {
+                required property SystemTrayItem modelData
+                width: 28
+                height: 28
+                visible: false
 
-                                }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 5
+                    color: mouse.containsMouse ? "#22ffffff" : "transparent"
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                }
 
-                            }
+                IconImage {
+                    anchors.centerIn: parent
+                    source: modelData.icon
+                    width: 20; height: 20
+                    layer.enabled: modelData.status === Status.NeedsAttention
+                }
 
-                            Repeater {
-                                model: SystemTray.items
+                QsMenuAnchor {
+                    id: ctxMenu
+                    menu: parent.modelData.menu
+                }
 
-                                Item {
-                                    required property SystemTrayItem modelData
-
-                                    width: 28
-                                    height: 28
-                                    visible: false
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: 5
-                                        color: mouse.containsMouse ? "#22ffffff" : "transparent"
-
-                                        Behavior on color {
-                                            ColorAnimation {
-                                                duration: 100
-                                            }
-
-                                        }
-
-                                    }
-
-                                    IconImage {
-                                        anchors.centerIn: parent
-                                        source: modelData.icon
-                                        width: 20
-                                        height: 20
-                                        layer.enabled: modelData.status === Status.NeedsAttention
-                                    }
-
-                                    QsMenuAnchor {
-                                        id: ctxMenu
-
-                                        menu: parent.modelData.menu
-                                    }
-
-                                    MouseArea {
-                                        id: mouse
-
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                        onClicked: (event) => {
-                                            if (event.button === Qt.LeftButton)
-                                                parent.modelData.activate();
-                                            else if (parent.modelData.hasMenu)
-                                                ctxMenu.open();
-                                        }
-
-                                        ToolTip {
-                                            visible: mouse.containsMouse
-                                            delay: 500
-                                            text: parent.parent.modelData.tooltipTitle || parent.parent.modelData.title
-                                        }
-
-                                    }
-
-                                }
-
-                            }
-
-                            // Battery (без изменений)
-                            Text {
-                                readonly property UPowerDevice battery: UPower.displayDevice
-
-                                text: {
-                                    if (battery.isLaptopBattery) {
-                                        const s = battery.state;
-                                        const p = Math.round(battery.percentage * 100);
-                                        if (s === UPowerDeviceState.Charging) {
-                                            if (p > 80)
-                                                return "󰂊 " + p + "%";
-
-                                            if (p > 60)
-                                                return "󰂉 " + p + "%";
-
-                                            if (p > 40)
-                                                return "󰂈 " + p + "%";
-
-                                            if (p > 20)
-                                                return "󰂆 " + p + "%";
-
-                                            return "󰢜 " + p + "%";
-                                        }
-                                        if (s === UPowerDeviceState.FullyCharged)
-                                            return "󰁹 " + p + "%";
-
-                                        if (p > 80)
-                                            return "󰂀 " + p + "%";
-
-                                        if (p > 60)
-                                            return "󰁿 " + p + "%";
-
-                                        if (p > 40)
-                                            return "󰁾 " + p + "%";
-
-                                        if (p > 20)
-                                            return "󰁽 " + p + "%";
-
-                                        return "󰁻 " + p + "%";
-                                    }
-                                }
-                                color: battery.percentage <= 0.15 ? colRed : battery.percentage <= 0.4 ? colYellow : colGreen
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.leftMargin: 4
-                            }
-
-                        }
-
+                MouseArea {
+                    id: mouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: event => {
+                        if (event.button === Qt.LeftButton) parent.modelData.activate()
+                        else if (parent.modelData.hasMenu)  ctxMenu.open()
                     }
+                    ToolTip {
+                        visible: mouse.containsMouse
+                        delay: 500
+                        text: parent.parent.modelData.tooltipTitle || parent.parent.modelData.title
+                    }
+                }
+            }
+        }
+
+        // Battery (без изменений)
+        Text {
+            readonly property UPowerDevice battery: UPower.displayDevice
+            text: {
+                if (battery.isLaptopBattery) {
+                    const s = battery.state
+                    const p = Math.round(battery.percentage * 100)
+                    if (s === UPowerDeviceState.Charging) {
+                        if (p > 80) return "󰂊 " + p + "%"
+                        if (p > 60) return "󰂉 " + p + "%"
+                        if (p > 40) return "󰂈 " + p + "%"
+                        if (p > 20) return "󰂆 " + p + "%"
+                        return "󰢜 " + p + "%"
+                    }
+                    if (s === UPowerDeviceState.FullyCharged) return "󰁹 " + p + "%"
+                    if (p > 80) return "󰂀 " + p + "%"
+                    if (p > 60) return "󰁿 " + p + "%"
+                    if (p > 40) return "󰁾 " + p + "%"
+                    if (p > 20) return "󰁽 " + p + "%"
+                    return "󰁻 " + p + "%"
+                }
+            }
+            color: battery.percentage <= 0.15 ? colRed
+                 : battery.percentage <= 0.40 ? colYellow
+                 : colGreen
+            font.pixelSize: fontSize
+            font.family: fontFamily
+            font.bold: true
+            Layout.leftMargin: 4
+        }
+    }
+}
 
                     // ═══════════════════════════════════════════════════════════
                     // RIGHT BOX: System stats
@@ -750,6 +631,9 @@ ShellRoot {
                         color: "transparent"
 
                         RowLayout {
+                            // Volume
+                            // Заменить существующий Volume Item в RIGHT BOX на этот блок:
+
                             anchors.fill: parent
                             anchors.margins: 8
                             spacing: 6
@@ -837,13 +721,37 @@ ShellRoot {
                                 Layout.rightMargin: 8
                             }
 
-                            // Volume
                             Item {
                                 id: volWidget
 
                                 implicitWidth: volLabel.implicitWidth
                                 implicitHeight: volLabel.implicitHeight
                                 Layout.rightMargin: 8
+
+                                SoundModule {
+                                    id: soundPopup
+
+                                    anchor.window: bar
+                                    anchor.rect.x: bar.width - width - 8
+                                    anchor.rect.y: bar.implicitHeight
+                                    fontFamily: root.fontFamily
+                                    fontSize: root.fontSize
+                                    colBg: root.colBg
+                                    colFg: root.colFg
+                                    colMuted: root.colMuted
+                                    colCyan: root.colCyan
+                                    colBlue: root.colBlue
+                                    colLBlue: root.colLightBlue
+                                    colGreen: root.colGreen
+                                    colRed: root.colRed
+                                    colYellow: root.colYellow
+                                    volLevel: volume.level
+                                    onVolChanged: (lvl) => {
+                                        volume.level = lvl;
+                                    }
+                                    // Пробрасываем hover с кнопки в модуль
+                                    barHovered: volHover.containsMouse
+                                }
 
                                 Text {
                                     id: volLabel
@@ -859,14 +767,23 @@ ShellRoot {
                                 }
 
                                 MouseArea {
+                                    id: volHover
+
                                     anchors.fill: parent
+                                    hoverEnabled: true
                                     acceptedButtons: Qt.NoButton
+                                    onEntered: {
+                                        soundPopup.visible = true;
+                                        soundPopup.barHovered = true;
+                                    }
+                                    onExited: {
+                                        soundPopup.barHovered = false;
+                                    }
                                     onWheel: (event) => {
                                         if (event.angleDelta.y > 0)
                                             volume.level = Math.min(100, volume.level + 5);
                                         else
                                             volume.level = Math.max(0, volume.level - 5);
-                                        volOsd.show();
                                         event.accepted = true;
                                     }
                                 }
