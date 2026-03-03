@@ -1,19 +1,22 @@
-import Quickshell
-import Quickshell.Wayland
-import Quickshell.Io
-import Quickshell.Hyprland
-import Quickshell.Widgets
+import "./modules"
+import "./services"
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.DBusMenu
+import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
-
-import "./modules"
-import "./services"
+import Quickshell.Wayland
+import Quickshell.Widgets
 
 ShellRoot {
+    // ── Processes ─────────────────────────────────────────────────────────
+    // ── Timers ────────────────────────────────────────────────────────────
+    // ── Bar ───────────────────────────────────────────────────────────────
+
     id: root
 
     // ── Theme ─────────────────────────────────────────────────────────────
@@ -28,11 +31,9 @@ ShellRoot {
     property color colLightBlue: "#81a1c1"
     property color colGreen: "#a3be8c"
     property color colBrown: "#b48ead"
-
     // ── Font ──────────────────────────────────────────────────────────────
     property string fontFamily: "Monaspace Krypton Medium"
     property int fontSize: 16
-
     // ── State ─────────────────────────────────────────────────────────────
     property string kernelVersion: "unknown"
     property int cpuUsage: 0
@@ -47,51 +48,56 @@ ShellRoot {
         "English (US)": "EN"
     }
     property string keyboardLayout: ""
-
     // ── CPU delta tracking ────────────────────────────────────────────────
     property var lastCpuIdle: 0
     property var lastCpuTotal: 0
-
     // ── GPU delta tracking ────────────────────────────────────────────────
     property var gpuUsage: 0
-
-    // ── Volume (single source of truth) ───────────────────────────────────
-    QtObject {
-        id: volume
-        property int level: 50
-        onLevelChanged: {
-            volumeSetProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", level + "%"];
-            volumeSetProc.running = true;
-        }
-    }
-
     // ── Network Connection ────────────────────────────────────────────────
     property string networkSSID: ""
     property string networkType: ""
     property string networkIP: ""
     property bool networkConnected: false
 
-    // ── Processes ─────────────────────────────────────────────────────────
+    // ── Volume (single source of truth) ───────────────────────────────────
+    QtObject {
+        id: volume
+
+        property int level: 50
+
+        onLevelChanged: {
+            volumeSetProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", level + "%"];
+            volumeSetProc.running = true;
+        }
+    }
 
     Process {
         id: kernelProc
+
         command: ["uname", "-n"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (data)
                     kernelVersion = data.trim();
+
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: cpuProc
+
         command: ["sh", "-c", "head -1 /proc/stat"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (!data)
-                    return;
+                    return ;
+
                 var p = data.trim().split(/\s+/);
                 var user = parseInt(p[1]) || 0;
                 var nice = parseInt(p[2]) || 0;
@@ -100,162 +106,205 @@ ShellRoot {
                 var iowait = parseInt(p[5]) || 0;
                 var irq = parseInt(p[6]) || 0;
                 var softirq = parseInt(p[7]) || 0;
-
                 var total = user + nice + system + idle + iowait + irq + softirq;
                 var idleTime = idle + iowait;
-
                 if (lastCpuTotal > 0) {
                     var td = total - lastCpuTotal;
                     var id = idleTime - lastCpuIdle;
                     if (td > 0)
                         cpuUsage = Math.round(100 * (td - id) / td);
+
                 }
                 lastCpuTotal = total;
                 lastCpuIdle = idleTime;
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: gpuProc
+
         command: ["sh", "-c", "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (data && data.trim())
                     gpuUsage = data.trim();
+
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: memProc
+
         command: ["sh", "-c", "free | grep Mem"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (!data)
-                    return;
+                    return ;
+
                 var p = data.trim().split(/\s+/);
                 var tot = parseInt(p[1]) || 1;
                 var used = parseInt(p[2]) || 0;
                 memUsage = Math.round(100 * used / tot);
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: diskProc
+
         command: ["sh", "-c", "df / | tail -1"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (!data)
-                    return;
+                    return ;
+
                 var p = data.trim().split(/\s+/);
                 diskUsage = parseInt((p[4] || "0%").replace('%', '')) || 0;
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: volGetProc
+
         command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (!data)
-                    return;
+                    return ;
+
                 var m = data.match(/Volume:\s*([\d.]+)/);
                 if (m)
                     volume.level = Math.round(parseFloat(m[1]) * 100);
+
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: volumeSetProc
+
         command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "50%"]
     }
 
     Process {
         id: windowProc
+
         command: ["sh", "-c", "hyprctl activewindow -j | jq -r '.title // empty'"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (data && data.trim())
                     activeWindow = data.trim();
+
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: windowAppProc
+
         command: ["sh", "-c", "hyprctl activewindow -j | jq -r '.class // empty'"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (data && data.trim())
                     activeWindowApp = data.trim();
+
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: keyboardProc
-        command: ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main == true) | .active_keymap'"]
+
+        // Hyprland: читаем активную раскладку через hyprctl
+        // i3/X11:   xkblayout-state возвращает только активную раскладку: "us" или "ru"
+        command: WMDetector.isI3 ? ["xkblayout-state", "print", "%s"] : ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main == true) | .active_keymap'"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim());
-                // keyboardLayout = data.trim()
-                keyboardLayout = keyboardLayouts[data.trim()];
+            onRead: (data) => {
+                if (!data || !data.trim())
+                    return ;
+
+                var raw = data.trim();
+                if (WMDetector.isI3) {
+                    var i3map = {
+                        "us": "EN",
+                        "ru": "RU"
+                    };
+                    keyboardLayout = i3map[raw] ?? raw.toUpperCase();
+                } else {
+                    // hyprctl возвращает полное название: "English (US)", "Russian"
+                    keyboardLayout = keyboardLayouts[raw] ?? raw;
+                }
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: netProc
+
         command: ["sh", "-c", "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev | grep connected"]
+        Component.onCompleted: running = true
+
         stdout: SplitParser {
-            onRead: data => {
+            onRead: (data) => {
                 if (!data || !data.trim()) {
                     networkConnected = false;
                     networkSSID = "";
                     networkType = "";
-                    return;
+                    return ;
                 }
-
                 var parts = data.trim().split(':');
                 if (parts.length >= 4 && (parts[1] === 'ethernet' || parts[1] === 'wifi') && parts[2] === 'connected') {
                     networkConnected = true;
-                    if (parts[1] === 'ethernet') {
+                    if (parts[1] === 'ethernet')
                         ipProc.running = true;
-                    } else {
+                    else
                         networkSSID = parts[3];
-                    }
                     networkType = parts[1];
                 }
             }
         }
-        Component.onCompleted: running = true
+
     }
 
     Process {
         id: ipProc
+
         command: ["sh", "-c", "hostname -i | awk '{print $1}'"]
+
         stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim()) {
+            onRead: (data) => {
+                if (data && data.trim())
                     networkIP = data.trim();
-                }
+
             }
         }
-    }
 
-    // ── Timers ────────────────────────────────────────────────────────────
+    }
 
     // Fast stats: CPU / mem / disk / volume — every second
     Timer {
@@ -273,6 +322,7 @@ ShellRoot {
 
     SystemClock {
         id: clock
+
         precision: SystemClock.Seconds
     }
 
@@ -286,14 +336,24 @@ ShellRoot {
         }
     }
 
-    // Window / layout — on Hyprland events
+    // Window / layout — on Hyprland events (только для Hyprland)
     Connections {
-        target: Hyprland
         function onRawEvent(event) {
             windowProc.running = true;
             windowAppProc.running = true;
             keyboardProc.running = true;
         }
+
+        target: Hyprland
+        enabled: WMDetector.isHyprland
+    }
+
+    // Keyboard layout poll для i3 (X11 не шлёт события — полим каждые 500ms)
+    Timer {
+        interval: 500
+        running: WMDetector.isI3
+        repeat: true
+        onTriggered: keyboardProc.running = true
     }
 
     // Window / layout backup poll
@@ -306,34 +366,43 @@ ShellRoot {
         }
     }
 
-    // ── Bar ───────────────────────────────────────────────────────────────
-
     Variants {
         model: Quickshell.screens
 
         PanelWindow {
             id: bar
+
             property var modelData
+
             screen: modelData
+            implicitHeight: 50
+            color: root.colBg
 
             anchors {
                 top: true
                 left: true
                 right: true
             }
-            implicitHeight: 50
-            color: root.colBg
 
             ControlMenu {
                 id: controlMenu
-                screen: Quickshell.screens[0]  // первый экран
+
+                screen: Quickshell.screens[0] // первый экран
             }
+
             Weather {
                 id: weather
             }
             // ── Volume OSD popup ──────────────────────────────────────────
+
             PopupWindow {
                 id: volOsd
+
+                function show() {
+                    visible = true;
+                    osdHide.restart();
+                }
+
                 anchor.window: bar
                 anchor.rect.x: bar.width - width
                 anchor.rect.y: bar.implicitHeight
@@ -344,14 +413,10 @@ ShellRoot {
 
                 Timer {
                     id: osdHide
+
                     interval: 1500
                     repeat: false
                     onTriggered: volOsd.visible = false
-                }
-
-                function show() {
-                    visible = true;
-                    osdHide.restart();
                 }
 
                 Rectangle {
@@ -382,12 +447,16 @@ ShellRoot {
                                 height: parent.height
                                 radius: parent.radius
                                 color: volume.level > 90 ? colRed : volume.level > 50 ? colYellow : colCyan
+
                                 Behavior on width {
                                     NumberAnimation {
                                         duration: 80
                                     }
+
                                 }
+
                             }
+
                         }
 
                         Text {
@@ -397,8 +466,11 @@ ShellRoot {
                             font.pixelSize: 12
                             font.family: root.fontFamily
                         }
+
                     }
+
                 }
+
             }
 
             // ── Bar content ───────────────────────────────────────────────
@@ -417,7 +489,6 @@ ShellRoot {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignLeft
                         Layout.preferredHeight: parent.height
-
                         color: "transparent"
 
                         RowLayout {
@@ -430,77 +501,33 @@ ShellRoot {
                                 Layout.preferredWidth: 24
                                 Layout.preferredHeight: 24
                                 color: "transparent"
+
                                 Text {
                                     anchors.centerIn: parent
                                     text: "✦"
                                     color: root.colCyan
                                     font.pixelSize: 25
                                     font.family: root.fontFamily
+
                                     MouseArea {
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         anchors.fill: parent
                                         onClicked: controlMenu.visible = !controlMenu.visible
                                     }
+
                                 }
+
                             }
 
-                            Repeater {
-                                readonly property int maxOccupied: {
-                                    let max = 0;
-                                    const ws = Hyprland.workspaces.values;
-                                    for (let i = 0; i < ws.length; i++) {
-                                        if (ws[i].id > max)
-                                            max = ws[i].id;
-                                    }
-                                    return max;
-                                }
-
-                                readonly property int maxModel: Math.max(maxOccupied, Hyprland.focusedWorkspace?.id ?? 0)
-
-                                model: maxModel
-
-                                Rectangle {
-                                    Layout.preferredHeight: parent.height
-                                    color: "transparent"
-
-                                    readonly property int wsId: index + 1
-                                    readonly property var workspace: Hyprland.workspaces.values.find(ws => ws.id === wsId) ?? null
-                                    readonly property bool isActive: Hyprland.focusedWorkspace?.id === wsId
-                                    readonly property bool hasWindows: workspace !== null
-
-                                    readonly property bool shouldShow: hasWindows || isActive || wsId === parent.maxModel
-
-                                    visible: shouldShow
-                                    Layout.preferredWidth: shouldShow ? 30 : 0
-
-                                    Text {
-                                        text: parent.wsId
-                                        color: parent.isActive ? colLightBlue : parent.hasWindows ? colFg : colMuted
-                                        font.pixelSize: fontSize
-                                        font.family: root.fontFamily
-                                        font.bold: true
-                                        anchors.centerIn: parent
-                                    }
-
-                                    Rectangle {
-                                        width: 20
-                                        height: 3
-                                        color: parent.isActive ? colBlue : colBg
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        anchors.bottom: parent.bottom
-                                        Behavior on color {
-                                            ColorAnimation {
-                                                duration: 100
-                                            }
-                                        }
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: Hyprland.dispatch("workspace " + parent.wsId)
-                                    }
-                                }
+                            Workspaces {
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                                colActive: root.colLightBlue
+                                colOccupied: root.colFg
+                                colEmpty: root.colMuted
+                                colBar: root.colBlue
+                                colBg: root.colBg
                             }
 
                             ColumnLayout {
@@ -531,8 +558,11 @@ ShellRoot {
                                     Layout.leftMargin: 8
                                     elide: Text.ElideRight
                                 }
+
                             }
+
                         }
+
                     }
 
                     // ═══════════════════════════════════════════════════════════
@@ -542,19 +572,57 @@ ShellRoot {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredHeight: parent.height
                         Layout.preferredWidth: 260
-
                         color: "transparent"
+
+                        // Календарь — объявлен здесь, якорится к bar
+                        CalendarModule {
+                            id: calendarPopup
+
+                            anchor.window: bar
+                            // Центрируем под часами: x = середина бара минус половина ширины попапа
+                            anchor.rect.x: (bar.width - width) / 2
+                            anchor.rect.y: bar.implicitHeight
+                            // Передаём тему из root
+                            fontFamily: root.fontFamily
+                            fontSize: root.fontSize
+                            colBg: root.colBg
+                            colFg: root.colFg
+                            colMuted: root.colMuted
+                            colCyan: root.colCyan
+                            colBlue: root.colBlue
+                            colLBlue: root.colLightBlue
+                            colRed: root.colRed
+                        }
 
                         RowLayout {
                             anchors.centerIn: parent
 
+                            // ── Часы — теперь кликабельны ────────────────────────────────────
                             Text {
                                 id: clockText
+
                                 text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
-                                color: colFg
+                                color: clockMouse.containsMouse ? colLightBlue : colFg
                                 font.pixelSize: fontSize
                                 font.family: fontFamily
                                 font.bold: true
+
+                                MouseArea {
+                                    id: clockMouse
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: calendarPopup.visible = !calendarPopup.visible
+                                }
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 120
+                                    }
+
+                                }
+
                             }
 
                             Repeater {
@@ -562,20 +630,23 @@ ShellRoot {
 
                                 Item {
                                     required property SystemTrayItem modelData
+
                                     width: 28
                                     height: 28
                                     visible: false
 
-                                    // Фон при наведении
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: 5
                                         color: mouse.containsMouse ? "#22ffffff" : "transparent"
+
                                         Behavior on color {
                                             ColorAnimation {
                                                 duration: 100
                                             }
+
                                         }
+
                                     }
 
                                     IconImage {
@@ -583,27 +654,26 @@ ShellRoot {
                                         source: modelData.icon
                                         width: 20
                                         height: 20
-
                                         layer.enabled: modelData.status === Status.NeedsAttention
                                     }
 
                                     QsMenuAnchor {
                                         id: ctxMenu
+
                                         menu: parent.modelData.menu
                                     }
 
                                     MouseArea {
                                         id: mouse
+
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         acceptedButtons: Qt.LeftButton | Qt.RightButton
-
-                                        onClicked: event => {
-                                            if (event.button === Qt.LeftButton) {
+                                        onClicked: (event) => {
+                                            if (event.button === Qt.LeftButton)
                                                 parent.modelData.activate();
-                                            } else if (parent.modelData.hasMenu) {
+                                            else if (parent.modelData.hasMenu)
                                                 ctxMenu.open();
-                                            }
                                         }
 
                                         ToolTip {
@@ -611,37 +681,51 @@ ShellRoot {
                                             delay: 500
                                             text: parent.parent.modelData.tooltipTitle || parent.parent.modelData.title
                                         }
+
                                     }
+
                                 }
+
                             }
 
-                            // Battery
+                            // Battery (без изменений)
                             Text {
                                 readonly property UPowerDevice battery: UPower.displayDevice
+
                                 text: {
                                     if (battery.isLaptopBattery) {
                                         const s = battery.state;
                                         const p = Math.round(battery.percentage * 100);
-                                        if (s === UPowerDeviceState.Charging)
+                                        if (s === UPowerDeviceState.Charging) {
                                             if (p > 80)
                                                 return "󰂊 " + p + "%";
-                                        if (p > 60)
-                                            return "󰂉 " + p + "%";
-                                        if (p > 40)
-                                            return "󰂈 " + p + "%";
-                                        if (p > 20)
-                                            return "󰂆 " + p + "%";
-                                        return "󰢜 " + p + "%";
+
+                                            if (p > 60)
+                                                return "󰂉 " + p + "%";
+
+                                            if (p > 40)
+                                                return "󰂈 " + p + "%";
+
+                                            if (p > 20)
+                                                return "󰂆 " + p + "%";
+
+                                            return "󰢜 " + p + "%";
+                                        }
                                         if (s === UPowerDeviceState.FullyCharged)
                                             return "󰁹 " + p + "%";
+
                                         if (p > 80)
                                             return "󰂀 " + p + "%";
+
                                         if (p > 60)
                                             return "󰁿 " + p + "%";
+
                                         if (p > 40)
                                             return "󰁾 " + p + "%";
+
                                         if (p > 20)
                                             return "󰁽 " + p + "%";
+
                                         return "󰁻 " + p + "%";
                                     }
                                 }
@@ -651,7 +735,9 @@ ShellRoot {
                                 font.bold: true
                                 Layout.leftMargin: 4
                             }
+
                         }
+
                     }
 
                     // ═══════════════════════════════════════════════════════════
@@ -661,13 +747,13 @@ ShellRoot {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignRight
                         Layout.preferredHeight: parent.height - 6
-
                         color: "transparent"
 
                         RowLayout {
                             anchors.fill: parent
                             anchors.margins: 8
                             spacing: 6
+
                             Item {
                                 Layout.fillWidth: true
                             }
@@ -687,8 +773,10 @@ ShellRoot {
                                 text: {
                                     if (!networkConnected)
                                         return "󰖪 " + "Disconnected";
+
                                     if (networkType === "ethernet")
                                         return "󰛳 " + networkIP;
+
                                     return "󰖩 " + networkSSID;
                                 }
                                 color: networkConnected ? colCyan : colRed
@@ -719,11 +807,13 @@ ShellRoot {
 
                                 MouseArea {
                                     id: btop
+
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: Quickshell.execDetached(["kitty", "btop"])
                                 }
+
                             }
 
                             // Memory
@@ -738,6 +828,7 @@ ShellRoot {
 
                             // Disk
                             Text {
+                                visible: false
                                 text: "DISK (/): " + diskUsage + "%"
                                 color: diskUsage > 90 ? colRed : diskUsage > 70 ? colYellow : colCyan
                                 font.pixelSize: fontSize
@@ -749,13 +840,14 @@ ShellRoot {
                             // Volume
                             Item {
                                 id: volWidget
+
                                 implicitWidth: volLabel.implicitWidth
                                 implicitHeight: volLabel.implicitHeight
-
                                 Layout.rightMargin: 8
 
                                 Text {
                                     id: volLabel
+
                                     text: {
                                         var icon = volume.level === 0 ? "󰝟" : volume.level < 50 ? "󰖀" : "󰕾";
                                         return icon + " " + volume.level + "%";
@@ -769,7 +861,7 @@ ShellRoot {
                                 MouseArea {
                                     anchors.fill: parent
                                     acceptedButtons: Qt.NoButton
-                                    onWheel: event => {
+                                    onWheel: (event) => {
                                         if (event.angleDelta.y > 0)
                                             volume.level = Math.min(100, volume.level + 5);
                                         else
@@ -778,6 +870,7 @@ ShellRoot {
                                         event.accepted = true;
                                     }
                                 }
+
                             }
 
                             Text {
@@ -792,16 +885,11 @@ ShellRoot {
                             // Power menu button
                             Rectangle {
                                 id: powerBtn
+
                                 Layout.preferredWidth: 24
                                 Layout.preferredHeight: 24
                                 Layout.rightMargin: 4
                                 color: powerMouse.containsMouse ? root.colMuted : "transparent"
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: 100
-                                    }
-                                }
 
                                 Text {
                                     anchors.centerIn: parent
@@ -813,20 +901,28 @@ ShellRoot {
 
                                 MouseArea {
                                     id: powerMouse
+
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     onClicked: powerMenu.visible = !powerMenu.visible
                                 }
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 100
+                                    }
+
+                                }
+
                             }
 
                             PopupWindow {
                                 id: powerMenu
-                                visible: false
 
+                                visible: false
                                 anchor.window: bar
                                 anchor.rect.x: bar.width - width
                                 anchor.rect.y: bar.implicitHeight
-
                                 width: 120
                                 height: 120
                                 color: "transparent"
@@ -840,36 +936,25 @@ ShellRoot {
                                         anchors.margins: 5
 
                                         Repeater {
-                                            model: [
-                                                {
-                                                    label: "Lock",
-                                                    cmd: "hyprlock"
-                                                },
-                                                {
-                                                    label: "Logout",
-                                                    cmd: "hyprctl dispatch exit"
-                                                },
-                                                {
-                                                    label: "Shutdown",
-                                                    cmd: "systemctl poweroff"
-                                                },
-                                                {
-                                                    label: "Reboot",
-                                                    cmd: "systemctl reboot"
-                                                }
-                                            ]
+                                            model: [{
+                                                "label": "Lock",
+                                                "cmd": "hyprlock"
+                                            }, {
+                                                "label": "Logout",
+                                                "cmd": "sh -c '[ \"$XDG_CURRENT_DESKTOP\" = \"Hyprland\" ] && hyprctl dispatch exit || i3-msg exit'"
+                                            }, {
+                                                "label": "Shutdown",
+                                                "cmd": "systemctl poweroff"
+                                            }, {
+                                                "label": "Reboot",
+                                                "cmd": "systemctl reboot"
+                                            }]
 
                                             Rectangle {
                                                 width: parent.width - 8
                                                 height: (powerMenu.height - 10) / 4
                                                 color: itemMouse.containsMouse ? colMuted : "transparent"
                                                 anchors.horizontalCenter: parent.horizontalCenter
-
-                                                Behavior on color {
-                                                    ColorAnimation {
-                                                        duration: 80
-                                                    }
-                                                }
 
                                                 Row {
                                                     anchors.centerIn: parent
@@ -882,10 +967,12 @@ ShellRoot {
                                                         font.family: fontFamily
                                                         font.bold: true
                                                     }
+
                                                 }
 
                                                 MouseArea {
                                                     id: itemMouse
+
                                                     anchors.fill: parent
                                                     hoverEnabled: true
                                                     onClicked: {
@@ -893,15 +980,34 @@ ShellRoot {
                                                         Hyprland.dispatch("exec " + modelData.cmd);
                                                     }
                                                 }
+
+                                                Behavior on color {
+                                                    ColorAnimation {
+                                                        duration: 80
+                                                    }
+
+                                                }
+
                                             }
+
                                         }
+
                                     }
+
                                 }
+
                             }
+
                         }
+
                     }
+
                 }
+
             }
+
         }
+
     }
+
 }

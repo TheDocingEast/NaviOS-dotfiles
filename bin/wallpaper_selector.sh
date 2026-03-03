@@ -121,7 +121,7 @@ set_wallpaper() {
     if command -v feh &>/dev/null; then
       feh --bg-fill "$WALLPAPER_PATH"
     elif command -v nitrogen &>/dev/null; then
-      nitrogen --set-zoom-fill "$WALLPAPER_PATH"
+      nitrogen --set-scaled "$WALLPAPER_PATH"
     elif command -v xwallpaper &>/dev/null; then
       xwallpaper --zoom "$WALLPAPER_PATH"
     else

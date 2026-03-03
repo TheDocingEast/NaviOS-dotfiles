@@ -111,7 +111,7 @@ source $ZSH/oh-my-zsh.sh
  if [[ -n $SSH_CONNECTION ]]; then
    export EDITOR='vim'
  else
-   export EDITOR='nvim'
+   export EDITOR='code'
  fi
 
 # Compilation flags
@@ -132,6 +132,7 @@ alias fastconf="nvim ~/.config/fastfetch/config.jsonc"
 alias pwdown="systemctl poweroff"
 alias restart="reboot"
 alias hyprconf="nvim ~/.config/hypr/hyprland.conf"
+alias i3conf="nvim ~/.config/i3/config"
 alias wayconf="cd ~/.config/waybar"
 alias kittyconf="nvim ~/.config/kitty/kitty.conf"
 alias vencord="~/bin/vencord_install.sh"

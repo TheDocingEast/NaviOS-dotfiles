@@ -1,2 +1,7 @@
 module Modules
 ControlMenu 1.0 ControlMenu.qml
+Workspaces 1.0 Workspaces.qml
+WorkspacesI3 1.0 WorkspacesI3.qml
+BluetoothModule 1.0 BluetoothModule.qml
+CalendarModule 1.0 CalendarModule.qml
+singleton WMDetector 1.0 WMDetector.qml
