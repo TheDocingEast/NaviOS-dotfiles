@@ -623,35 +623,35 @@ ShellRoot {
                                         const p = Math.round(battery.percentage * 100);
                                         if (s === UPowerDeviceState.Charging) {
                                             if (p > 80)
-                                                return " " + p + "%";
+                                                return "󰂊 " + p + "%";
 
                                             if (p > 60)
-                                                return " " + p + "%";
+                                                return "󰂉 " + p + "%";
 
                                             if (p > 40)
-                                                return " " + p + "%";
+                                                return "󰂈 " + p + "%";
 
                                             if (p > 20)
-                                                return " " + p + "%";
+                                                return "󰂆 " + p + "%";
 
-                                            return " " + p + "%";
+                                            return "󰢜 " + p + "%";
                                         }
                                         if (s === UPowerDeviceState.FullyCharged)
-                                            return " " + p + "%";
+                                            return "󰁹 " + p + "%";
 
                                         if (p > 80)
-                                            return " " + p + "%";
+                                            return "󰂀 " + p + "%";
 
                                         if (p > 60)
-                                            return " " + p + "%";
+                                            return "󰁿 " + p + "%";
 
                                         if (p > 40)
-                                            return " " + p + "%";
+                                            return "󰁾 " + p + "%";
 
                                         if (p > 20)
-                                            return " " + p + "%";
+                                            return "󰁽 " + p + "%";
 
-                                        return " " + p + "%";
+                                        return "󰁻 " + p + "%";
                                     }
                                 }
                                 color: battery.percentage <= 0.15 ? colRed : battery.percentage <= 0.4 ? colYellow : colGreen
@@ -697,36 +697,51 @@ ShellRoot {
                             }
 
                             WifiModule {
-    id: wifiPopup
-    anchor.window: bar
-    anchor.rect.x: bar.width - width - 8
-    anchor.rect.y: bar.implicitHeight
-    fontFamily: root.fontFamily;  fontSize: root.fontSize
-    colBg: root.colBg;    colFg: root.colFg;     colMuted: root.colMuted
-    colCyan: root.colCyan; colBlue: root.colBlue; colLBlue: root.colLightBlue
-    colGreen: root.colGreen; colRed: root.colRed; colYellow: root.colYellow
-    netConnected: root.networkConnected
-    netType:      root.networkType
-    netSSID:      root.networkSSID
-    netIP:        root.networkIP
-}
+                                id: wifiPopup
 
-Text {
-    text: {
-        if (!networkConnected) return "󰖪 Disconnected"
-        if (networkType === "ethernet") return "󰛳 " + networkIP
-        return "󰖩 " + networkSSID
-    }
-    color: networkConnected ? colCyan : colRed
-    font.pixelSize: fontSize; font.family: fontFamily; font.bold: true
-    Layout.rightMargin: 8
+                                anchor.window: bar
+                                anchor.rect.x: bar.width - width - 8
+                                anchor.rect.y: bar.implicitHeight
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                                colBg: root.colBg
+                                colFg: root.colFg
+                                colMuted: root.colMuted
+                                colCyan: root.colCyan
+                                colBlue: root.colBlue
+                                colLBlue: root.colLightBlue
+                                colGreen: root.colGreen
+                                colRed: root.colRed
+                                colYellow: root.colYellow
+                                netConnected: root.networkConnected
+                                netType: root.networkType
+                                netSSID: root.networkSSID
+                                netIP: root.networkIP
+                            }
 
-    MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: wifiPopup.visible = !wifiPopup.visible
-    }
-}
+                            Text {
+                                text: {
+                                    if (!networkConnected)
+                                        return "󰖪 Disconnected";
+
+                                    if (networkType === "ethernet")
+                                        return "󰛳 " + networkIP;
+
+                                    return "󰖩 " + networkSSID;
+                                }
+                                color: networkConnected ? colCyan : colRed
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
+                                font.bold: true
+                                Layout.rightMargin: 8
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: wifiPopup.visible = !wifiPopup.visible
+                                }
+
+                            }
 
                             // CPU
                             Text {
