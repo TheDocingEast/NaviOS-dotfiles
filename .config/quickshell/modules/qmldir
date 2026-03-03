@@ -5,4 +5,5 @@ WorkspacesI3 1.0 WorkspacesI3.qml
 BluetoothModule 1.0 BluetoothModule.qml
 CalendarModule 1.0 CalendarModule.qml
 SoundModule 1.0 SoundModule.qml
+WifiModule 1.0 WifiModule.qml
 singleton WMDetector 1.0 WMDetector.qml

@@ -58,7 +58,7 @@ ShellRoot {
     property string networkType: ""
     property string networkIP: ""
     property bool networkConnected: false
-    // Weather      
+    // Weather
     property var weatherService: weather
 
     // ── Volume (single source of truth) ───────────────────────────────────
@@ -492,134 +492,178 @@ ShellRoot {
                     // CENTER BOX: Clock
                     // ═══════════════════════════════════════════════════════════
                     Rectangle {
-    Layout.alignment: Qt.AlignHCenter
-    Layout.preferredHeight: parent.height
-    Layout.preferredWidth: 260
-    color: "transparent"
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredHeight: parent.height
+                        Layout.preferredWidth: 260
+                        color: "transparent"
 
-    // Календарь — объявлен здесь, якорится к bar
-    CalendarModule {
-        id: calendarPopup
-        anchor.window: bar
-        // Центрируем под часами: x = середина бара минус половина ширины попапа
-        anchor.rect.x: (bar.width - width) / 2
-        anchor.rect.y: bar.implicitHeight
+                        // Календарь — объявлен здесь, якорится к bar
+                        CalendarModule {
+                            id: calendarPopup
 
-        // Передаём тему из root
-        fontFamily: root.fontFamily
-        fontSize:   root.fontSize
-        colBg:      root.colBg
-        colFg:      root.colFg
-        colMuted:   root.colMuted
-        colCyan:    root.colCyan
-        colBlue:    root.colBlue
-        colLBlue:   root.colLightBlue
-        colGreen:   root.colGreen
-        colRed:     root.colRed
-        colYellow:  root.colYellow
-    }
+                            anchor.window: bar
+                            // Центрируем под часами: x = середина бара минус половина ширины попапа
+                            anchor.rect.x: (bar.width - width) / 2
+                            anchor.rect.y: bar.implicitHeight
+                            // Передаём тему из root
+                            fontFamily: root.fontFamily
+                            fontSize: root.fontSize
+                            colBg: root.colBg
+                            colFg: root.colFg
+                            colMuted: root.colMuted
+                            colCyan: root.colCyan
+                            colBlue: root.colBlue
+                            colLBlue: root.colLightBlue
+                            colGreen: root.colGreen
+                            colRed: root.colRed
+                            colYellow: root.colYellow
+                        }
 
-    RowLayout {
-        anchors.centerIn: parent
+                        RowLayout {
+                            anchors.centerIn: parent
 
-        // ── Часы — теперь кликабельны ────────────────────────────────────
-        Text {
-            id: clockText
-            text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
-            color: clockMouse.containsMouse ? colLightBlue : colFg
-            font.pixelSize: fontSize
-            font.family: fontFamily
-            font.bold: true
+                            // ── Часы — теперь кликабельны ────────────────────────────────────
+                            Text {
+                                id: clockText
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
+                                color: clockMouse.containsMouse ? colLightBlue : colFg
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
+                                font.bold: true
 
-            MouseArea {
-                id: clockMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: calendarPopup.visible = !calendarPopup.visible
-            }
-        }
+                                MouseArea {
+                                    id: clockMouse
 
-        Repeater {
-            model: SystemTray.items
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: calendarPopup.visible = !calendarPopup.visible
+                                }
 
-            Item {
-                required property SystemTrayItem modelData
-                width: 28
-                height: 28
-                visible: false
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 120
+                                    }
 
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 5
-                    color: mouse.containsMouse ? "#22ffffff" : "transparent"
-                    Behavior on color { ColorAnimation { duration: 100 } }
-                }
+                                }
 
-                IconImage {
-                    anchors.centerIn: parent
-                    source: modelData.icon
-                    width: 20; height: 20
-                    layer.enabled: modelData.status === Status.NeedsAttention
-                }
+                            }
 
-                QsMenuAnchor {
-                    id: ctxMenu
-                    menu: parent.modelData.menu
-                }
+                            Repeater {
+                                model: SystemTray.items
 
-                MouseArea {
-                    id: mouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onClicked: event => {
-                        if (event.button === Qt.LeftButton) parent.modelData.activate()
-                        else if (parent.modelData.hasMenu)  ctxMenu.open()
+                                Item {
+                                    required property SystemTrayItem modelData
+
+                                    width: 28
+                                    height: 28
+                                    visible: false
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 5
+                                        color: mouse.containsMouse ? "#22ffffff" : "transparent"
+
+                                        Behavior on color {
+                                            ColorAnimation {
+                                                duration: 100
+                                            }
+
+                                        }
+
+                                    }
+
+                                    IconImage {
+                                        anchors.centerIn: parent
+                                        source: modelData.icon
+                                        width: 20
+                                        height: 20
+                                        layer.enabled: modelData.status === Status.NeedsAttention
+                                    }
+
+                                    QsMenuAnchor {
+                                        id: ctxMenu
+
+                                        menu: parent.modelData.menu
+                                    }
+
+                                    MouseArea {
+                                        id: mouse
+
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                        onClicked: (event) => {
+                                            if (event.button === Qt.LeftButton)
+                                                parent.modelData.activate();
+                                            else if (parent.modelData.hasMenu)
+                                                ctxMenu.open();
+                                        }
+
+                                        ToolTip {
+                                            visible: mouse.containsMouse
+                                            delay: 500
+                                            text: parent.parent.modelData.tooltipTitle || parent.parent.modelData.title
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+
+                            // Battery
+                            Text {
+                                readonly property UPowerDevice battery: UPower.displayDevice
+
+                                text: {
+                                    if (battery.isLaptopBattery) {
+                                        const s = battery.state;
+                                        const p = Math.round(battery.percentage * 100);
+                                        if (s === UPowerDeviceState.Charging) {
+                                            if (p > 80)
+                                                return " " + p + "%";
+
+                                            if (p > 60)
+                                                return " " + p + "%";
+
+                                            if (p > 40)
+                                                return " " + p + "%";
+
+                                            if (p > 20)
+                                                return " " + p + "%";
+
+                                            return " " + p + "%";
+                                        }
+                                        if (s === UPowerDeviceState.FullyCharged)
+                                            return " " + p + "%";
+
+                                        if (p > 80)
+                                            return " " + p + "%";
+
+                                        if (p > 60)
+                                            return " " + p + "%";
+
+                                        if (p > 40)
+                                            return " " + p + "%";
+
+                                        if (p > 20)
+                                            return " " + p + "%";
+
+                                        return " " + p + "%";
+                                    }
+                                }
+                                color: battery.percentage <= 0.15 ? colRed : battery.percentage <= 0.4 ? colYellow : colGreen
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
+                                font.bold: true
+                                Layout.leftMargin: 4
+                            }
+
+                        }
+
                     }
-                    ToolTip {
-                        visible: mouse.containsMouse
-                        delay: 500
-                        text: parent.parent.modelData.tooltipTitle || parent.parent.modelData.title
-                    }
-                }
-            }
-        }
-
-        // Battery (без изменений)
-        Text {
-            readonly property UPowerDevice battery: UPower.displayDevice
-            text: {
-                if (battery.isLaptopBattery) {
-                    const s = battery.state
-                    const p = Math.round(battery.percentage * 100)
-                    if (s === UPowerDeviceState.Charging) {
-                        if (p > 80) return "󰂊 " + p + "%"
-                        if (p > 60) return "󰂉 " + p + "%"
-                        if (p > 40) return "󰂈 " + p + "%"
-                        if (p > 20) return "󰂆 " + p + "%"
-                        return "󰢜 " + p + "%"
-                    }
-                    if (s === UPowerDeviceState.FullyCharged) return "󰁹 " + p + "%"
-                    if (p > 80) return "󰂀 " + p + "%"
-                    if (p > 60) return "󰁿 " + p + "%"
-                    if (p > 40) return "󰁾 " + p + "%"
-                    if (p > 20) return "󰁽 " + p + "%"
-                    return "󰁻 " + p + "%"
-                }
-            }
-            color: battery.percentage <= 0.15 ? colRed
-                 : battery.percentage <= 0.40 ? colYellow
-                 : colGreen
-            font.pixelSize: fontSize
-            font.family: fontFamily
-            font.bold: true
-            Layout.leftMargin: 4
-        }
-    }
-}
 
                     // ═══════════════════════════════════════════════════════════
                     // RIGHT BOX: System stats
@@ -652,23 +696,37 @@ ShellRoot {
                                 Layout.rightMargin: 8
                             }
 
-                            // Network
-                            Text {
-                                text: {
-                                    if (!networkConnected)
-                                        return "󰖪 " + "Disconnected";
+                            WifiModule {
+    id: wifiPopup
+    anchor.window: bar
+    anchor.rect.x: bar.width - width - 8
+    anchor.rect.y: bar.implicitHeight
+    fontFamily: root.fontFamily;  fontSize: root.fontSize
+    colBg: root.colBg;    colFg: root.colFg;     colMuted: root.colMuted
+    colCyan: root.colCyan; colBlue: root.colBlue; colLBlue: root.colLightBlue
+    colGreen: root.colGreen; colRed: root.colRed; colYellow: root.colYellow
+    netConnected: root.networkConnected
+    netType:      root.networkType
+    netSSID:      root.networkSSID
+    netIP:        root.networkIP
+}
 
-                                    if (networkType === "ethernet")
-                                        return "󰛳 " + networkIP;
+Text {
+    text: {
+        if (!networkConnected) return "󰖪 Disconnected"
+        if (networkType === "ethernet") return "󰛳 " + networkIP
+        return "󰖩 " + networkSSID
+    }
+    color: networkConnected ? colCyan : colRed
+    font.pixelSize: fontSize; font.family: fontFamily; font.bold: true
+    Layout.rightMargin: 8
 
-                                    return "󰖩 " + networkSSID;
-                                }
-                                color: networkConnected ? colCyan : colRed
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
-                            }
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: wifiPopup.visible = !wifiPopup.visible
+    }
+}
 
                             // CPU
                             Text {
