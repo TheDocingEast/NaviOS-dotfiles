@@ -20,19 +20,19 @@ PopupWindow {
     property color  colRed:     "#bf616a"
     property color  colYellow:  "#ebcb8b"
 
-    // ── Network state (пробрасывается из shell.qml) ───────────────────────
+    // ── Network state (из shell.qml) ──────────────────────────────────────
     property bool   netConnected: false
     property string netType:      ""   // "wifi" | "ethernet" | ""
     property string netSSID:      ""
     property string netIP:        ""
 
-    // ── Internal state ────────────────────────────────────────────────────
+    // ── Internal ──────────────────────────────────────────────────────────
     property bool   scanning:     false
     property var    networks:     []
     property string connectingTo: ""
     property string errorMsg:     ""
 
-    // ── Размер / стиль — идентично CalendarModule ─────────────────────────
+    // ── Popup geometry / style ────────────────────────────────────────────
     width:   320
     height:  contentRect.implicitHeight
     color:   "transparent"
@@ -43,11 +43,11 @@ PopupWindow {
             contentRect.scale   = 0.94
             contentRect.opacity = 0
             appearAnim.restart()
-            startScan()
-            pwdRow.visible    = false
-            pwdRow.targetSSID = ""
+            root.startScan()
+            root.errorMsg     = ""
+            pwdArea.visible   = false
+            pwdArea.ssid      = ""
             pwdInput.text     = ""
-            errorMsg          = ""
         }
     }
 
@@ -62,43 +62,28 @@ PopupWindow {
         id: scanProc
         command: ["sh", "-c",
             "nmcli -t -f SSID,SIGNAL,SECURITY,IN-USE dev wifi list 2>/dev/null | sort -t: -k2 -rn"]
-
         stdout: SplitParser {
-            onRead: (data) => {
-                if (!data || !data.trim()) return
-                var parts = data.trim().split(":")
-                if (parts.length < 4) return
-                var ssid = parts[0]
-                if (!ssid) return
-                var signal   = parseInt(parts[1]) || 0
-                var security = parts[2] || ""
-                var active   = parts[3] === "*"
+            onRead: (line) => {
+                if (!line || !line.trim()) return
+                var p = line.trim().split(":")
+                if (p.length < 4 || !p[0]) return
                 var cur = root.networks.slice()
-                if (!cur.some(n => n.ssid === ssid)) {
-                    cur.push({ ssid, signal, security, active })
-                    root.networks = cur
-                }
+                if (!cur.some(n => n.ssid === p[0]))
+                    cur.push({ ssid: p[0], signal: parseInt(p[1]) || 0, security: p[2] || "", active: p[3] === "*" })
+                root.networks = cur
             }
         }
-
-        onRunningChanged: {
-            if (!running) root.scanning = false
-        }
+        onRunningChanged: { if (!running) root.scanning = false }
     }
 
     Process {
         id: connectProc
         running: false
         onRunningChanged: {
-            if (!running) {
-                root.connectingTo = ""
-                startScan()
-            }
+            if (!running) { root.connectingTo = ""; root.startScan() }
         }
         stderr: SplitParser {
-            onRead: (data) => {
-                if (data && data.trim()) root.errorMsg = data.trim()
-            }
+            onRead: (line) => { if (line && line.trim()) root.errorMsg = line.trim() }
         }
     }
 
@@ -107,49 +92,38 @@ PopupWindow {
         command: ["sh", "-c",
             "nmcli dev disconnect $(nmcli -t -f DEVICE,TYPE,STATE dev | grep ':connected' | cut -d: -f1 | head -1)"]
         running: false
-        onRunningChanged: {
-            if (!running) startScan()
-        }
+        onRunningChanged: { if (!running) root.startScan() }
     }
 
     Process {
-        id: ipRefreshProc
+        id: ipProc
         command: ["sh", "-c", "hostname -i | awk '{print $1}'"]
         running: false
         stdout: SplitParser {
-            onRead: (data) => {
-                if (data && data.trim()) root.netIP = data.trim()
-            }
+            onRead: (line) => { if (line && line.trim()) root.netIP = line.trim() }
         }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
     function startScan() {
-        root.networks = []
-        root.errorMsg = ""
-        if (root.netType === "wifi" || !root.netConnected) {
-            root.scanning = true
-            scanProc.running = true
-        }
-        if (root.netType === "ethernet") {
-            ipRefreshProc.running = true
-        }
+        root.networks  = []
+        root.errorMsg  = ""
+        if (root.netType === "ethernet") { ipProc.running = true; return }
+        root.scanning  = true
+        scanProc.running = true
     }
 
-    function connectTo(ssid, pwd) {
+    function doConnect(ssid, pwd) {
         root.connectingTo = ssid
-        root.errorMsg = ""
+        root.errorMsg     = ""
         connectProc.command = pwd
             ? ["sh", "-c", "nmcli dev wifi connect " + JSON.stringify(ssid) + " password " + JSON.stringify(pwd)]
             : ["sh", "-c", "nmcli dev wifi connect " + JSON.stringify(ssid)]
         connectProc.running = true
     }
 
-    function signalIcon(sig) {
-        if (sig > 75) return "󰤨"
-        if (sig > 50) return "󰤥"
-        if (sig > 25) return "󰤢"
-        return "󰤟"
+    function sigIcon(s) {
+        return s > 75 ? "󰤨" : s > 50 ? "󰤥" : s > 25 ? "󰤢" : "󰤟"
     }
 
     // ── UI ────────────────────────────────────────────────────────────────
@@ -174,89 +148,73 @@ PopupWindow {
                 Layout.fillWidth: true
 
                 Text {
-                    text: {
-                        if (!root.netConnected)          return "󰖪  Network"
-                        if (root.netType === "ethernet") return "󰛳  Ethernet"
-                        return "󰖩  Wi-Fi"
-                    }
-                    font { pixelSize: root.fontSize; family: root.fontFamily; bold: true }
+                    text: !root.netConnected          ? "󰖪  Network"
+                        : root.netType === "ethernet" ? "󰛳  Ethernet"
+                        :                               "󰖩  Wi-Fi"
+                    font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
                     color: root.netConnected ? root.colCyan : root.colMuted
                 }
 
                 Item { Layout.fillWidth: true }
 
+                // Кнопка обновить (только для wifi / нет соединения)
                 Text {
-                    visible: root.netType === "wifi" || !root.netConnected
+                    visible: root.netType !== "ethernet"
                     text: root.scanning ? "󰑐" : "󰑓"
-                    font { pixelSize: root.fontSize; family: root.fontFamily }
+                    font.pixelSize: root.fontSize; font.family: root.fontFamily
                     color: refreshMa.containsMouse ? root.colLBlue : root.colMuted
 
                     RotationAnimation on rotation {
-                        running: root.scanning
-                        loops: Animation.Infinite
+                        running: root.scanning; loops: Animation.Infinite
                         from: 0; to: 360; duration: 900
                     }
-
                     MouseArea {
-                        id: refreshMa
-                        anchors.fill: parent; hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+                        id: refreshMa; anchors.fill: parent
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: root.startScan()
                     }
                 }
             }
 
-            // ── Divider ───────────────────────────────────────────────────
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1; color: root.colMuted; opacity: 0.35
-            }
+            Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.35 }
 
             // ══════════════════════════════════════════════════════════════
             // ETHERNET
             // ══════════════════════════════════════════════════════════════
             ColumnLayout {
                 visible: root.netConnected && root.netType === "ethernet"
-                Layout.fillWidth: true
-                spacing: 10
+                Layout.fillWidth: true; spacing: 10
 
                 RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 14
+                    Layout.alignment: Qt.AlignHCenter; spacing: 14
 
                     Text {
                         text: "󰛳"
-                        font { pixelSize: root.fontSize + 24; family: root.fontFamily }
+                        font.pixelSize: root.fontSize + 24; font.family: root.fontFamily
                         color: root.colGreen
                     }
-
                     ColumnLayout {
                         spacing: 3
-
                         Text {
                             text: "Connected"
-                            font { pixelSize: root.fontSize; family: root.fontFamily; bold: true }
+                            font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
                             color: root.colGreen
                         }
-
                         Text {
                             visible: root.netIP !== ""
                             text: root.netIP
-                            font { pixelSize: root.fontSize - 3; family: root.fontFamily }
+                            font.pixelSize: root.fontSize - 3; font.family: root.fontFamily
                             color: root.colFg
                         }
                     }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 1; color: root.colMuted; opacity: 0.35
-                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.35 }
 
+                // Disconnect
                 Item {
                     Layout.alignment: Qt.AlignHCenter
-                    width:  discEthLabel.implicitWidth + 24
-                    height: 28
+                    width: discEthLbl.implicitWidth + 24; height: 28
 
                     Rectangle {
                         anchors.fill: parent; radius: 6
@@ -265,20 +223,16 @@ PopupWindow {
                             : "transparent"
                         Behavior on color { ColorAnimation { duration: 100 } }
                     }
-
                     Text {
-                        id: discEthLabel
-                        anchors.centerIn: parent
+                        id: discEthLbl; anchors.centerIn: parent
                         text: "󰅖  Disconnect"
-                        font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                        font.pixelSize: root.fontSize - 2; font.family: root.fontFamily
                         color: discEthMa.containsMouse ? root.colRed : root.colMuted
                         Behavior on color { ColorAnimation { duration: 100 } }
                     }
-
                     MouseArea {
-                        id: discEthMa
-                        anchors.fill: parent; hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+                        id: discEthMa; anchors.fill: parent
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: disconnectProc.running = true
                     }
                 }
@@ -292,8 +246,7 @@ PopupWindow {
             Rectangle {
                 visible: root.netConnected && root.netType === "wifi"
                 Layout.fillWidth: true
-                height: connRow.implicitHeight + 12
-                radius: 6
+                height: connRow.implicitHeight + 12; radius: 6
                 color:  Qt.rgba(root.colGreen.r, root.colGreen.g, root.colGreen.b, 0.08)
                 border.color: root.colGreen; border.width: 1
 
@@ -304,39 +257,33 @@ PopupWindow {
                     spacing: 8
 
                     Text {
-                        text: signalIcon(100)
-                        font { pixelSize: root.fontSize + 2; family: root.fontFamily }
+                        text: root.sigIcon(100)
+                        font.pixelSize: root.fontSize + 2; font.family: root.fontFamily
                         color: root.colGreen
                     }
-
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 0
-
                         Text {
                             Layout.fillWidth: true
                             text: root.netSSID || "Connected"
-                            font { pixelSize: root.fontSize - 1; family: root.fontFamily; bold: true }
+                            font.pixelSize: root.fontSize - 1; font.family: root.fontFamily; font.bold: true
                             color: root.colFg; elide: Text.ElideRight
                         }
-
                         Text {
                             visible: root.netIP !== ""
                             text: root.netIP
-                            font { pixelSize: root.fontSize - 5; family: root.fontFamily }
+                            font.pixelSize: root.fontSize - 5; font.family: root.fontFamily
                             color: root.colMuted
                         }
                     }
-
                     Text {
                         text: "󰅖"
-                        font { pixelSize: root.fontSize; family: root.fontFamily }
+                        font.pixelSize: root.fontSize; font.family: root.fontFamily
                         color: discWifiMa.containsMouse ? root.colRed : root.colMuted
                         Behavior on color { ColorAnimation { duration: 100 } }
-
                         MouseArea {
-                            id: discWifiMa
-                            anchors.fill: parent; hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            id: discWifiMa; anchors.fill: parent
+                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: disconnectProc.running = true
                         }
                     }
@@ -348,29 +295,29 @@ PopupWindow {
                 visible: !root.netConnected
                 Layout.alignment: Qt.AlignHCenter
                 text: "󰖪  No connection"
-                font { pixelSize: root.fontSize - 1; family: root.fontFamily }
+                font.pixelSize: root.fontSize - 1; font.family: root.fontFamily
                 color: root.colRed
             }
 
-            // ── Список Wi-Fi сетей ────────────────────────────────────────
+            // ══════════════════════════════════════════════════════════════
+            // WIFI — список сетей
+            // ══════════════════════════════════════════════════════════════
             ColumnLayout {
-                visible: root.netType === "wifi" || !root.netConnected
-                Layout.fillWidth: true
-                spacing: 2
+                visible: root.netType !== "ethernet"
+                Layout.fillWidth: true; spacing: 2
 
                 Text {
                     visible: root.scanning && root.networks.length === 0
                     Layout.alignment: Qt.AlignHCenter
                     text: "Scanning…"
-                    font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                    font.pixelSize: root.fontSize - 2; font.family: root.fontFamily
                     color: root.colMuted
                 }
-
                 Text {
                     visible: !root.scanning && root.networks.length === 0
                     Layout.alignment: Qt.AlignHCenter
                     text: "No networks found"
-                    font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                    font.pixelSize: root.fontSize - 2; font.family: root.fontFamily
                     color: root.colMuted
                 }
 
@@ -380,15 +327,10 @@ PopupWindow {
                     Rectangle {
                         required property var modelData
                         Layout.fillWidth: true
-                        height: netRow.implicitHeight + 10
-                        radius: 6
-                        color: {
-                            if (modelData.active)
-                                return Qt.rgba(root.colGreen.r, root.colGreen.g, root.colGreen.b, 0.08)
-                            if (netItemMa.containsMouse)
-                                return Qt.rgba(1, 1, 1, 0.05)
-                            return "transparent"
-                        }
+                        height: netRow.implicitHeight + 10; radius: 6
+                        color: modelData.active         ? Qt.rgba(root.colGreen.r, root.colGreen.g, root.colGreen.b, 0.08)
+                             : netItemMa.containsMouse  ? Qt.rgba(1, 1, 1, 0.05)
+                             : "transparent"
                         border.color: modelData.active ? root.colGreen : "transparent"
                         border.width: 1
                         Behavior on color { ColorAnimation { duration: 80 } }
@@ -400,45 +342,40 @@ PopupWindow {
                             spacing: 8
 
                             Text {
-                                text: signalIcon(modelData.signal)
-                                font { pixelSize: root.fontSize; family: root.fontFamily }
+                                text: root.sigIcon(modelData.signal)
+                                font.pixelSize: root.fontSize; font.family: root.fontFamily
                                 color: modelData.active      ? root.colGreen
                                      : modelData.signal > 66 ? root.colCyan
                                      : modelData.signal > 33 ? root.colYellow
                                      : root.colRed
                             }
-
                             Text {
                                 Layout.fillWidth: true
                                 text: modelData.ssid
-                                font { pixelSize: root.fontSize - 2; family: root.fontFamily;
-                                       bold: modelData.active }
+                                font.pixelSize: root.fontSize - 2; font.family: root.fontFamily
+                                font.bold: modelData.active
                                 color: modelData.active ? root.colGreen : root.colFg
                                 elide: Text.ElideRight
                             }
-
                             Text {
                                 visible: modelData.security !== "" && modelData.security !== "--"
                                 text: "󰌾"
-                                font { pixelSize: root.fontSize - 4; family: root.fontFamily }
+                                font.pixelSize: root.fontSize - 4; font.family: root.fontFamily
                                 color: root.colMuted
                             }
-
                             Text {
                                 visible: root.connectingTo === modelData.ssid
                                 text: "󰑐"
-                                font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                                font.pixelSize: root.fontSize - 2; font.family: root.fontFamily
                                 color: root.colYellow
                                 RotationAnimation on rotation {
-                                    running: root.connectingTo !== ""
-                                    loops: Animation.Infinite
+                                    running: root.connectingTo !== ""; loops: Animation.Infinite
                                     from: 0; to: 360; duration: 900
                                 }
                             }
-
                             Text {
                                 text: modelData.signal + "%"
-                                font { pixelSize: root.fontSize - 5; family: root.fontFamily }
+                                font.pixelSize: root.fontSize - 5; font.family: root.fontFamily
                                 color: root.colMuted
                                 Layout.minimumWidth: 32
                                 horizontalAlignment: Text.AlignRight
@@ -446,22 +383,18 @@ PopupWindow {
                         }
 
                         MouseArea {
-                            id: netItemMa
-                            anchors.fill: parent; hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            id: netItemMa; anchors.fill: parent
+                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 if (modelData.active) return
                                 var secured = modelData.security !== "" && modelData.security !== "--"
                                 if (secured) {
-                                    pwdRow.targetSSID = modelData.ssid
-                                    pwdRow.visible    = true
-                                    pwdInput.text     = ""
-                                    Qt.callLater(() => {
-                                        root.requestActivate()
-                                        pwdInput.forceActiveFocus()
-                                    })
+                                    pwdArea.ssid    = modelData.ssid
+                                    pwdArea.visible = true
+                                    pwdInput.text   = ""
+                                    pwdInput.forceActiveFocus()
                                 } else {
-                                    root.connectTo(modelData.ssid, "")
+                                    root.doConnect(modelData.ssid, "")
                                 }
                             }
                         }
@@ -471,24 +404,23 @@ PopupWindow {
 
             // ── Ввод пароля ───────────────────────────────────────────────
             Rectangle {
-                id: pwdRow
-                property string targetSSID: ""
+                id: pwdArea
+                property string ssid: ""
                 visible: false
                 Layout.fillWidth: true
-                height: pwdLayout.implicitHeight + 12
-                radius: 6
+                height: pwdRow.implicitHeight + 12; radius: 6
                 color:  Qt.rgba(root.colBlue.r, root.colBlue.g, root.colBlue.b, 0.10)
                 border.color: root.colBlue; border.width: 1
 
                 RowLayout {
-                    id: pwdLayout
+                    id: pwdRow
                     anchors { left: parent.left; right: parent.right;
                               verticalCenter: parent.verticalCenter; margins: 8 }
                     spacing: 6
 
                     Text {
                         text: "󰌾"
-                        font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                        font.pixelSize: root.fontSize - 2; font.family: root.fontFamily
                         color: root.colLBlue
                     }
 
@@ -496,57 +428,55 @@ PopupWindow {
                         id: pwdInput
                         Layout.fillWidth: true
                         echoMode: TextInput.Password
-                        focus: true
-                        font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                        font.pixelSize: root.fontSize - 2; font.family: root.fontFamily
                         color: root.colFg
                         selectionColor: root.colBlue
 
                         Keys.onReturnPressed: {
-                            root.connectTo(pwdRow.targetSSID, pwdInput.text)
-                            pwdRow.visible = false; pwdInput.text = ""
+                            root.doConnect(pwdArea.ssid, pwdInput.text)
+                            pwdArea.visible = false
+                            pwdInput.text   = ""
                         }
                         Keys.onEscapePressed: {
-                            pwdRow.visible = false; pwdInput.text = ""
+                            pwdArea.visible = false
+                            pwdInput.text   = ""
                         }
                     }
 
+                    // Кнопка подключить
                     Item {
                         width: 28; height: 28
-
                         Rectangle {
                             anchors.fill: parent; radius: 6
-                            color: connectBtnMa.containsMouse ? root.colBlue : root.colMuted
+                            color: connBtnMa.containsMouse ? root.colBlue : root.colMuted
                             Behavior on color { ColorAnimation { duration: 100 } }
                         }
-
                         Text {
                             anchors.centerIn: parent; text: "󰌑"
-                            font { pixelSize: root.fontSize; family: root.fontFamily }
+                            font.pixelSize: root.fontSize; font.family: root.fontFamily
                             color: root.colFg
                         }
-
                         MouseArea {
-                            id: connectBtnMa
-                            anchors.fill: parent; hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            id: connBtnMa; anchors.fill: parent
+                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                root.connectTo(pwdRow.targetSSID, pwdInput.text)
-                                pwdRow.visible = false; pwdInput.text = ""
+                                root.doConnect(pwdArea.ssid, pwdInput.text)
+                                pwdArea.visible = false
+                                pwdInput.text   = ""
                             }
                         }
                     }
 
+                    // Кнопка отмена
                     Text {
                         text: "󰅖"
-                        font { pixelSize: root.fontSize; family: root.fontFamily }
+                        font.pixelSize: root.fontSize; font.family: root.fontFamily
                         color: cancelMa.containsMouse ? root.colRed : root.colMuted
                         Behavior on color { ColorAnimation { duration: 100 } }
-
                         MouseArea {
-                            id: cancelMa
-                            anchors.fill: parent; hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: { pwdRow.visible = false; pwdInput.text = "" }
+                            id: cancelMa; anchors.fill: parent
+                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: { pwdArea.visible = false; pwdInput.text = "" }
                         }
                     }
                 }
@@ -557,7 +487,7 @@ PopupWindow {
                 visible: root.errorMsg !== ""
                 Layout.fillWidth: true
                 text: "󰀦  " + root.errorMsg
-                font { pixelSize: root.fontSize - 4; family: root.fontFamily }
+                font.pixelSize: root.fontSize - 4; font.family: root.fontFamily
                 color: root.colRed
                 wrapMode: Text.WordWrap
             }
