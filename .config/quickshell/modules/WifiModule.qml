@@ -456,7 +456,10 @@ PopupWindow {
                                     pwdRow.targetSSID = modelData.ssid
                                     pwdRow.visible    = true
                                     pwdInput.text     = ""
-                                    pwdInput.forceActiveFocus()
+                                    Qt.callLater(() => {
+                                        root.requestActivate()
+                                        pwdInput.forceActiveFocus()
+                                    })
                                 } else {
                                     root.connectTo(modelData.ssid, "")
                                 }
@@ -493,6 +496,7 @@ PopupWindow {
                         id: pwdInput
                         Layout.fillWidth: true
                         echoMode: TextInput.Password
+                        focus: true
                         font { pixelSize: root.fontSize - 2; family: root.fontFamily }
                         color: root.colFg
                         selectionColor: root.colBlue
