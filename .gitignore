@@ -6,3 +6,8 @@ img/
 .config/kitty/kitty.conf.bak
 .config/gtk-3.0/bookmarks
 .config/hypr/wallpaper/.current_wallpaper
+*.log
+*.asar
+*.ldb
+*.txt
+*.old

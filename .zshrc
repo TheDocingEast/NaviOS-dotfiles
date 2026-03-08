@@ -94,6 +94,7 @@ plugins=(
   zsh-syntax-highlighting
   zsh-autosuggestions
   archlinux
+  aider
 )
 
 
@@ -154,11 +155,10 @@ export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.flutter/bin:$PATH"
 export CHROME_EXECUTABLE=/usr/bin/chromium
+export PATH="$HOME/.local/bin:$PATH"
 export ANTHROPIC_AUTH_TOKEN=ollama
 export ANTHROPIC_API_KEY=""
 export ANTHROPIC_BASE_URL=http://localhost:11434
-export PATH="$HOME/.local/bin:$PATH"
-export CLAUDE_MODEL=qwen3-coder
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!

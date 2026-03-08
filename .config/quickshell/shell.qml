@@ -22,6 +22,7 @@ ShellRoot {
     // ── Theme ─────────────────────────────────────────────────────────────
     property color colBg: "#2e3440"
     property color colFg: "#d8dee9"
+    property color colSurface: "#3b4252"
     property color colMuted: "#4c566a"
     property color colCyan: "#8fbcbb"
     property color colPurple: "#ad8ee6"
@@ -443,15 +444,7 @@ ShellRoot {
 
                             }
 
-                            Workspaces {
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                                colActive: root.colLightBlue
-                                colOccupied: root.colFg
-                                colEmpty: root.colMuted
-                                colBar: root.colBlue
-                                colBg: root.colBg
-                            }
+                            
 
                             ColumnLayout {
                                 Layout.preferredHeight: parent.height
@@ -484,6 +477,10 @@ ShellRoot {
 
                             }
 
+                            
+
+                            
+
                         }
 
                     }
@@ -497,121 +494,23 @@ ShellRoot {
                         Layout.preferredWidth: 260
                         color: "transparent"
 
-                        // Календарь — объявлен здесь, якорится к bar
-                        CalendarModule {
-                            id: calendarPopup
-
-                            anchor.window: bar
-                            // Центрируем под часами: x = середина бара минус половина ширины попапа
-                            anchor.rect.x: (bar.width - width) / 2
-                            anchor.rect.y: bar.implicitHeight
-                            // Передаём тему из root
-                            fontFamily: root.fontFamily
-                            fontSize: root.fontSize
-                            colBg: root.colBg
-                            colFg: root.colFg
-                            colMuted: root.colMuted
-                            colCyan: root.colCyan
-                            colBlue: root.colBlue
-                            colLBlue: root.colLightBlue
-                            colGreen: root.colGreen
-                            colRed: root.colRed
-                            colYellow: root.colYellow
-                        }
-
                         RowLayout {
                             anchors.centerIn: parent
 
-                            // ── Часы — теперь кликабельны ────────────────────────────────────
-                            Text {
-                                id: clockText
-
-                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
-                                color: clockMouse.containsMouse ? colLightBlue : colFg
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-
-                                MouseArea {
-                                    id: clockMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: calendarPopup.visible = !calendarPopup.visible
-                                }
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: 120
-                                    }
-
-                                }
-
+                            Workspaces {
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                                colActive: root.colLightBlue
+                                colOccupied: root.colFg
+                                colEmpty: root.colMuted
+                                colBar: root.colBlue
+                                colBg: root.colBg
                             }
+                            
 
-                            Repeater {
-                                model: SystemTray.items
+                            
 
-                                Item {
-                                    required property SystemTrayItem modelData
-
-                                    width: 28
-                                    height: 28
-                                    visible: false
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: 5
-                                        color: mouse.containsMouse ? "#22ffffff" : "transparent"
-
-                                        Behavior on color {
-                                            ColorAnimation {
-                                                duration: 100
-                                            }
-
-                                        }
-
-                                    }
-
-                                    IconImage {
-                                        anchors.centerIn: parent
-                                        source: modelData.icon
-                                        width: 20
-                                        height: 20
-                                        layer.enabled: modelData.status === Status.NeedsAttention
-                                    }
-
-                                    QsMenuAnchor {
-                                        id: ctxMenu
-
-                                        menu: parent.modelData.menu
-                                    }
-
-                                    MouseArea {
-                                        id: mouse
-
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                        onClicked: (event) => {
-                                            if (event.button === Qt.LeftButton)
-                                                parent.modelData.activate();
-                                            else if (parent.modelData.hasMenu)
-                                                ctxMenu.open();
-                                        }
-
-                                        ToolTip {
-                                            visible: mouse.containsMouse
-                                            delay: 500
-                                            text: parent.parent.modelData.tooltipTitle || parent.parent.modelData.title
-                                        }
-
-                                    }
-
-                                }
-
-                            }
+                            
 
                             // Battery
                             Text {
@@ -686,14 +585,54 @@ ShellRoot {
                                 Layout.fillWidth: true
                             }
 
-                            // Kernel
+                            // ── Часы — теперь кликабельны ────────────────────────────────────
                             Text {
-                                text: " " + kernelVersion
-                                color: colBrown
+                                id: clockText
+
+                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
+                                color: clockMouse.containsMouse ? colLightBlue : colFg
                                 font.pixelSize: fontSize
                                 font.family: fontFamily
                                 font.bold: true
                                 Layout.rightMargin: 8
+
+                                MouseArea {
+                                    id: clockMouse
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: calendarPopup.visible = !calendarPopup.visible
+                                }
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 120
+                                    }
+
+                                }
+
+                            }
+                            // Календарь — объявлен здесь, якорится к bar
+                            CalendarModule {
+                                id: calendarPopup
+
+                                anchor.window: bar
+                                // Центрируем под часами: x = середина бара минус половина ширины попапа
+                                anchor.rect.x: (bar.width - width) / 2
+                                anchor.rect.y: bar.implicitHeight
+                                // Передаём тему из root
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                                colBg: root.colBg
+                                colFg: root.colFg
+                                colMuted: root.colMuted
+                                colCyan: root.colCyan
+                                colBlue: root.colBlue
+                                colLBlue: root.colLightBlue
+                                colGreen: root.colGreen
+                                colRed: root.colRed
+                                colYellow: root.colYellow
                             }
 
                             WifiModule {
