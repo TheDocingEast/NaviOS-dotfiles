@@ -378,7 +378,7 @@ ShellRoot {
             property var modelData
 
             screen: modelData
-            implicitHeight: 50
+            implicitHeight: 55
             color: root.colBg
 
             anchors {
@@ -444,7 +444,34 @@ ShellRoot {
 
                             }
 
-                            
+                            // ── Часы — теперь кликабельны ────────────────────────────────────
+                            Text {
+                                id: clockText
+
+                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
+                                color: clockMouse.containsMouse ? colLightBlue : colFg
+                                font.pixelSize: fontSize
+                                font.family: fontFamily
+                                font.bold: true
+                                Layout.rightMargin: 8
+
+                                MouseArea {
+                                    id: clockMouse
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: calendarPopup.visible = !calendarPopup.visible
+                                }
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 120
+                                    }
+
+                                }
+
+                            }
 
                             ColumnLayout {
                                 Layout.preferredHeight: parent.height
@@ -476,6 +503,7 @@ ShellRoot {
                                 }
 
                             }
+                            
 
                             
 
@@ -511,6 +539,33 @@ ShellRoot {
                             
 
                             
+
+                            
+
+                        }
+
+                    }
+
+                    // ═══════════════════════════════════════════════════════════
+                    // RIGHT BOX: System stats
+                    // ═══════════════════════════════════════════════════════════
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignRight
+                        Layout.preferredHeight: parent.height - 6
+                        color: "transparent"
+
+                        RowLayout {
+                            // Volume
+                            // Заменить существующий Volume Item в RIGHT BOX на этот блок:
+
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 6
+
+                            Item {
+                                Layout.fillWidth: true
+                            }
 
                             // Battery
                             Text {
@@ -558,60 +613,6 @@ ShellRoot {
                                 font.family: fontFamily
                                 font.bold: true
                                 Layout.leftMargin: 4
-                            }
-
-                        }
-
-                    }
-
-                    // ═══════════════════════════════════════════════════════════
-                    // RIGHT BOX: System stats
-                    // ═══════════════════════════════════════════════════════════
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignRight
-                        Layout.preferredHeight: parent.height - 6
-                        color: "transparent"
-
-                        RowLayout {
-                            // Volume
-                            // Заменить существующий Volume Item в RIGHT BOX на этот блок:
-
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 6
-
-                            Item {
-                                Layout.fillWidth: true
-                            }
-
-                            // ── Часы — теперь кликабельны ────────────────────────────────────
-                            Text {
-                                id: clockText
-
-                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
-                                color: clockMouse.containsMouse ? colLightBlue : colFg
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
-
-                                MouseArea {
-                                    id: clockMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: calendarPopup.visible = !calendarPopup.visible
-                                }
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: 120
-                                    }
-
-                                }
-
                             }
                             // Календарь — объявлен здесь, якорится к bar
                             CalendarModule {

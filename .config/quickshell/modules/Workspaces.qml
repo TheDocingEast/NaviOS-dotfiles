@@ -109,6 +109,7 @@ Item {
         "heroic":           "󰺵",
         "minecraft":        "󰍳",
         "github":           "󰊤",
+        "obsidian":         "󱓩",
     })
 
     // ── Resolve icon by wsId ──────────────────────────────────────────────────
@@ -242,10 +243,10 @@ Item {
 
                             Rectangle {
                                 id: innerRect
-                                height: 25
+                                height: 30
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 anchors.verticalCenter: parent.verticalCenter
-                                radius: 20
+                                radius:20
                             }
 
                             Text {
