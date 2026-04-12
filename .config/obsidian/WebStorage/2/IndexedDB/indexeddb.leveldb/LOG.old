@@ -1,6 +1,0 @@
-2025/08/13-00:03:17.099 6ad1 Creating DB /home/thedocingeast/.config/obsidian/WebStorage/2/IndexedDB/indexeddb.leveldb since it was missing.
-2025/08/13-00:03:17.108 6ad1 Reusing MANIFEST /home/thedocingeast/.config/obsidian/WebStorage/2/IndexedDB/indexeddb.leveldb/MANIFEST-000001
-2025/08/13-00:03:20.563 6ad1 Level-0 table #5: started
-2025/08/13-00:03:20.566 6ad1 Level-0 table #5: 6430 bytes OK
-2025/08/13-00:03:20.568 6ad1 Delete type=0 #3
-2025/08/13-00:03:20.568 6ad1 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

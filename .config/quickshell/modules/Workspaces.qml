@@ -75,10 +75,10 @@ Item {
         "google-chrome":    "",
         "brave":            "󰖟",
         "code":             "󰨞",
-        "jetbrains":        "󰀺",
-        "pycharm":          "󱃖",
-        "idea":             "󰀺",
-        "clion":            "󰀺",
+        "jetbrains":        "",
+        "pycharm":          "",
+        "idea":             "",
+        "clion":            "",
         "kitty":            "",
         "alacritty":        "",
         "foot":             "",
@@ -86,6 +86,7 @@ Item {
         "konsole":          "",
         "thunar":           "󰉋",
         "nautilus":         "󰉋",
+        "nemo":             "󰉋",
         "dolphin":          "󰉋",
         "spotify":          "󰓇",
         "mpv":              "",
@@ -110,6 +111,8 @@ Item {
         "minecraft":        "󰍳",
         "github":           "󰊤",
         "obsidian":         "󱓩",
+        "torrent":          "󰇚",
+        "prusa":            "",
     })
 
     // ── Resolve icon by wsId ──────────────────────────────────────────────────

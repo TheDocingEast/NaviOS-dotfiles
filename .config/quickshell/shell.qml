@@ -1,5 +1,3 @@
-import "./modules"
-import "./services"
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -11,6 +9,8 @@ import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import Quickshell.Widgets
+import qs.modules
+import qs.services
 
 ShellRoot {
     // ── Processes ─────────────────────────────────────────────────────────
@@ -81,13 +81,11 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (data)
                     kernelVersion = data.trim();
-
             }
         }
-
     }
 
     Process {
@@ -97,9 +95,9 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (!data)
-                    return ;
+                    return;
 
                 var p = data.trim().split(/\s+/);
                 var user = parseInt(p[1]) || 0;
@@ -116,13 +114,11 @@ ShellRoot {
                     var id = idleTime - lastCpuIdle;
                     if (td > 0)
                         cpuUsage = Math.round(100 * (td - id) / td);
-
                 }
                 lastCpuTotal = total;
                 lastCpuIdle = idleTime;
             }
         }
-
     }
 
     Process {
@@ -132,13 +128,11 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (data && data.trim())
                     gpuUsage = data.trim();
-
             }
         }
-
     }
 
     Process {
@@ -148,9 +142,9 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (!data)
-                    return ;
+                    return;
 
                 var p = data.trim().split(/\s+/);
                 var tot = parseInt(p[1]) || 1;
@@ -158,7 +152,6 @@ ShellRoot {
                 memUsage = Math.round(100 * used / tot);
             }
         }
-
     }
 
     Process {
@@ -168,15 +161,14 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (!data)
-                    return ;
+                    return;
 
                 var p = data.trim().split(/\s+/);
                 diskUsage = parseInt((p[4] || "0%").replace('%', '')) || 0;
             }
         }
-
     }
 
     Process {
@@ -186,17 +178,15 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (!data)
-                    return ;
+                    return;
 
                 var m = data.match(/Volume:\s*([\d.]+)/);
                 if (m)
                     volume.level = Math.round(parseFloat(m[1]) * 100);
-
             }
         }
-
     }
 
     Process {
@@ -212,13 +202,11 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (data && data.trim())
                     activeWindow = data.trim();
-
             }
         }
-
     }
 
     Process {
@@ -228,13 +216,11 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (data && data.trim())
                     activeWindowApp = data.trim();
-
             }
         }
-
     }
 
     Process {
@@ -246,9 +232,9 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (!data || !data.trim())
-                    return ;
+                    return;
 
                 var raw = data.trim();
                 if (WMDetector.isI3) {
@@ -263,7 +249,6 @@ ShellRoot {
                 }
             }
         }
-
     }
 
     Process {
@@ -273,12 +258,12 @@ ShellRoot {
         Component.onCompleted: running = true
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (!data || !data.trim()) {
                     networkConnected = false;
                     networkSSID = "";
                     networkType = "";
-                    return ;
+                    return;
                 }
                 var parts = data.trim().split(':');
                 if (parts.length >= 4 && (parts[1] === 'ethernet' || parts[1] === 'wifi') && parts[2] === 'connected') {
@@ -291,7 +276,6 @@ ShellRoot {
                 }
             }
         }
-
     }
 
     Process {
@@ -300,13 +284,11 @@ ShellRoot {
         command: ["sh", "-c", "hostname -i | awk '{print $1}'"]
 
         stdout: SplitParser {
-            onRead: (data) => {
+            onRead: data => {
                 if (data && data.trim())
                     networkIP = data.trim();
-
             }
         }
-
     }
 
     // Fast stats: CPU / mem / disk / volume — every second
@@ -369,6 +351,33 @@ ShellRoot {
         }
     }
 
+    // ── Wallpaper Selector ────────────────────────────────────────────────
+    WallpaperSelector {
+        id: wallpaperSelector
+
+        fontFamily: root.fontFamily
+        fontSize: root.fontSize
+        colBg: root.colBg
+        colFg: root.colFg
+        colMuted: root.colMuted
+        colCyan: root.colCyan
+        colBlue: root.colBlue
+        colLBlue: root.colLightBlue
+        colGreen: root.colGreen
+        colRed: root.colRed
+        colYellow: root.colYellow
+    }
+
+    // Win + R  →  global, quickshell:wallpaperToggle
+    // Добавь в hyprland.conf:
+    //   bind = SUPER, R, global, quickshell:wallpaperToggle
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "wallpaperToggle"
+        description: "Toggle wallpaper selector"
+        onPressed: wallpaperSelector.toggle()
+    }
+
     Variants {
         model: Quickshell.screens
 
@@ -378,7 +387,7 @@ ShellRoot {
             property var modelData
 
             screen: modelData
-            implicitHeight: 55
+            implicitHeight: 50
             color: root.colBg
 
             anchors {
@@ -439,21 +448,46 @@ ShellRoot {
                                         anchors.fill: parent
                                         onClicked: controlMenu.visible = !controlMenu.visible
                                     }
-
                                 }
-
                             }
 
                             // ── Часы — теперь кликабельны ────────────────────────────────────
-                            Text {
-                                id: clockText
+                            ColumnLayout {
+                                Layout.preferredHeight: parent.height
+                                Layout.fillWidth: true
+                                spacing: 0
 
-                                text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy HH:mm")
-                                color: clockMouse.containsMouse ? colLightBlue : colFg
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
+                                Text {
+                                    text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy")
+                                    color: clockMouse.containsMouse ? colLightBlue : colFg
+                                    font.pixelSize: fontSize - 4
+                                    font.family: fontFamily
+                                    font.bold: true
+                                    Layout.leftMargin: 8
+                                    elide: Text.ElideRight
+
+                                    Behavior on color {
+                                        ColorAnimation {
+                                            duration: 120
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: Qt.formatDateTime(clock.date, "HH:mm:ss")
+                                    color: clockMouse.containsMouse ? colLightBlue : colFg
+                                    font.pixelSize: fontSize
+                                    font.family: fontFamily
+                                    font.bold: true
+                                    Layout.leftMargin: 8
+                                    elide: Text.ElideRight
+
+                                    Behavior on color {
+                                        ColorAnimation {
+                                            duration: 120
+                                        }
+                                    }
+                                }
 
                                 MouseArea {
                                     id: clockMouse
@@ -463,14 +497,28 @@ ShellRoot {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: calendarPopup.visible = !calendarPopup.visible
                                 }
+                            }
 
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: 120
-                                    }
+                            // Календарь — объявлен здесь, якорится к bar
+                            CalendarModule {
+                                id: calendarPopup
 
-                                }
-
+                                anchor.window: bar
+                                // Центрируем под часами: x = середина бара минус половина ширины попапа
+                                anchor.rect.x: bar.width - bar.width
+                                anchor.rect.y: bar.implicitHeight
+                                // Передаём тему из root
+                                fontFamily: root.fontFamily
+                                fontSize: root.fontSize
+                                colBg: root.colBg
+                                colFg: root.colFg
+                                colMuted: root.colMuted
+                                colCyan: root.colCyan
+                                colBlue: root.colBlue
+                                colLBlue: root.colLightBlue
+                                colGreen: root.colGreen
+                                colRed: root.colRed
+                                colYellow: root.colYellow
                             }
 
                             ColumnLayout {
@@ -501,16 +549,8 @@ ShellRoot {
                                     Layout.leftMargin: 8
                                     elide: Text.ElideRight
                                 }
-
                             }
-                            
-
-                            
-
-                            
-
                         }
-
                     }
 
                     // ═══════════════════════════════════════════════════════════
@@ -534,16 +574,7 @@ ShellRoot {
                                 colBar: root.colBlue
                                 colBg: root.colBg
                             }
-                            
-
-                            
-
-                            
-
-                            
-
                         }
-
                     }
 
                     // ═══════════════════════════════════════════════════════════
@@ -614,27 +645,6 @@ ShellRoot {
                                 font.bold: true
                                 Layout.leftMargin: 4
                             }
-                            // Календарь — объявлен здесь, якорится к bar
-                            CalendarModule {
-                                id: calendarPopup
-
-                                anchor.window: bar
-                                // Центрируем под часами: x = середина бара минус половина ширины попапа
-                                anchor.rect.x: (bar.width - width) / 2
-                                anchor.rect.y: bar.implicitHeight
-                                // Передаём тему из root
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                                colBg: root.colBg
-                                colFg: root.colFg
-                                colMuted: root.colMuted
-                                colCyan: root.colCyan
-                                colBlue: root.colBlue
-                                colLBlue: root.colLightBlue
-                                colGreen: root.colGreen
-                                colRed: root.colRed
-                                colYellow: root.colYellow
-                            }
 
                             WifiModule {
                                 id: wifiPopup
@@ -680,7 +690,6 @@ ShellRoot {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: wifiPopup.visible = !wifiPopup.visible
                                 }
-
                             }
 
                             // CPU
@@ -710,7 +719,6 @@ ShellRoot {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: Quickshell.execDetached(["kitty", "btop"])
                                 }
-
                             }
 
                             // Memory
@@ -759,7 +767,7 @@ ShellRoot {
                                     colRed: root.colRed
                                     colYellow: root.colYellow
                                     volLevel: volume.level
-                                    onVolChanged: (lvl) => {
+                                    onVolChanged: lvl => {
                                         volume.level = lvl;
                                     }
                                     // Пробрасываем hover с кнопки в модуль
@@ -792,7 +800,7 @@ ShellRoot {
                                     onExited: {
                                         soundPopup.barHovered = false;
                                     }
-                                    onWheel: (event) => {
+                                    onWheel: event => {
                                         if (event.angleDelta.y > 0)
                                             volume.level = Math.min(100, volume.level + 5);
                                         else
@@ -800,7 +808,6 @@ ShellRoot {
                                         event.accepted = true;
                                     }
                                 }
-
                             }
 
                             Text {
@@ -820,6 +827,7 @@ ShellRoot {
                                 Layout.preferredHeight: 24
                                 Layout.rightMargin: 4
                                 color: powerMouse.containsMouse ? root.colMuted : "transparent"
+                                radius: 8
 
                                 Text {
                                     anchors.centerIn: parent
@@ -841,9 +849,56 @@ ShellRoot {
                                     ColorAnimation {
                                         duration: 100
                                     }
+                                }
+                            }
 
+                            Item {
+                                id: vcBtnWidget
+
+                                implicitWidth: vcBtnLabel.implicitWidth
+                                implicitHeight: vcBtnLabel.implicitHeight
+                                Layout.rightMargin: 8
+
+                                VoicerWindow {
+                                    id: voicerPopup
+
+                                    // Якорь к бару — появляется над кнопкой, у правого края
+                                    anchor.window: bar
+                                    anchor.rect.x: bar.width - width - 8
+                                    anchor.rect.y: bar.implicitHeight
+                                    fontFamily: root.fontFamily
+                                    fontSize: root.fontSize
+                                    colBg: root.colBg
+                                    colFg: root.colFg
+                                    colMuted: root.colMuted
+                                    colCyan: root.colCyan
+                                    colBlue: root.colBlue
+                                    colLBlue: root.colLightBlue
+                                    colGreen: root.colGreen
+                                    colRed: root.colRed
+                                    colYellow: root.colYellow
                                 }
 
+                                Text {
+                                    id: vcBtnLabel
+
+                                    text: {
+                                        var icon = VoiceChangerService.vcRtActive ? "󰍬" : VoiceChangerService.vcBusy ? "󰔟" : VoiceChangerService.vcLoaded ? "󰍬" : "󰍭";
+                                        return icon;
+                                    }
+                                    color: VoiceChangerService.vcRtActive ? colGreen : VoiceChangerService.vcBusy ? colYellow : VoiceChangerService.vcLoaded ? colCyan : colMuted
+                                    font.pixelSize: fontSize
+                                    font.family: fontFamily
+                                    font.bold: true
+                                }
+
+                                MouseArea {
+                                    id: vcHover
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: voicerPopup.visible = !voicerPopup.visible
+                                }
                             }
 
                             PopupWindow {
@@ -866,19 +921,24 @@ ShellRoot {
                                         anchors.margins: 5
 
                                         Repeater {
-                                            model: [{
-                                                "label": "Lock",
-                                                "cmd": "hyprlock"
-                                            }, {
-                                                "label": "Logout",
-                                                "cmd": "sh -c '[ \"$XDG_CURRENT_DESKTOP\" = \"Hyprland\" ] && hyprctl dispatch exit || i3-msg exit'"
-                                            }, {
-                                                "label": "Shutdown",
-                                                "cmd": "systemctl poweroff"
-                                            }, {
-                                                "label": "Reboot",
-                                                "cmd": "systemctl reboot"
-                                            }]
+                                            model: [
+                                                {
+                                                    "label": "Lock",
+                                                    "cmd": "hyprlock"
+                                                },
+                                                {
+                                                    "label": "Logout",
+                                                    "cmd": "sh -c '[ \"$XDG_CURRENT_DESKTOP\" = \"Hyprland\" ] && hyprctl dispatch exit || i3-msg exit'"
+                                                },
+                                                {
+                                                    "label": "Shutdown",
+                                                    "cmd": "systemctl poweroff"
+                                                },
+                                                {
+                                                    "label": "Reboot",
+                                                    "cmd": "systemctl reboot"
+                                                }
+                                            ]
 
                                             Rectangle {
                                                 width: parent.width - 8
@@ -897,7 +957,6 @@ ShellRoot {
                                                         font.family: fontFamily
                                                         font.bold: true
                                                     }
-
                                                 }
 
                                                 MouseArea {
@@ -915,29 +974,16 @@ ShellRoot {
                                                     ColorAnimation {
                                                         duration: 80
                                                     }
-
                                                 }
-
                                             }
-
                                         }
-
                                     }
-
                                 }
-
                             }
-
                         }
-
                     }
-
                 }
-
             }
-
         }
-
     }
-
 }

@@ -156,9 +156,11 @@ export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.flutter/bin:$PATH"
 export CHROME_EXECUTABLE=/usr/bin/chromium
 export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/go/bin/hyprls:$PATH"
 export ANTHROPIC_AUTH_TOKEN=ollama
 export ANTHROPIC_API_KEY=""
 export ANTHROPIC_BASE_URL=http://localhost:11434
+export PYTORCH_ALLOC_CONF=expandable_segments:True
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
