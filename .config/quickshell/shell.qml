@@ -21,8 +21,9 @@ ShellRoot {
 
     // ── Theme ─────────────────────────────────────────────────────────────
     property color colBg: "#2e3440"
-    property color colFg: "#d8dee9"
+    property color colFg: "#e5e9f0"
     property color colSurface: "#3b4252"
+    property color colAccent: "#d8dee9"
     property color colMuted: "#4c566a"
     property color colCyan: "#8fbcbb"
     property color colPurple: "#ad8ee6"
