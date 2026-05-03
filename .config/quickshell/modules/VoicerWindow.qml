@@ -45,8 +45,20 @@ PopupWindow {
     }
     ParallelAnimation {
         id: showAnim
-        NumberAnimation { target: mainCard; property: "scale";   to: 1.0; duration: 160; easing.type: Easing.OutCubic }
-        NumberAnimation { target: mainCard; property: "opacity"; to: 1.0; duration: 160; easing.type: Easing.OutCubic }
+                NumberAnimation {
+            target: mainCard
+            property: "scale"
+            to: 1.0
+            duration: 160
+            easing.type: Easing.OutCubic
+        }
+                NumberAnimation {
+            target: mainCard
+            property: "opacity"
+            to: 1.0
+            duration: 160
+            easing.type: Easing.OutCubic
+        }
     }
 
     Rectangle {
@@ -73,12 +85,32 @@ PopupWindow {
                 Layout.rightMargin: 8
                 spacing: 0
 
-                WinTabBtn { tabText: "󰍬  Синтез";     active: mainCard.activeTab === 0; onClicked: mainCard.activeTab = 0; Layout.fillWidth: true }
-                WinTabBtn { tabText: "󰕖  Фразы";      active: mainCard.activeTab === 1; onClicked: mainCard.activeTab = 1; Layout.fillWidth: true }
-                WinTabBtn { tabText: "  VirtualMic"; active: mainCard.activeTab === 2; onClicked: mainCard.activeTab = 2; Layout.fillWidth: true }
+                                WinTabBtn {
+                    tabText: "󰍬  Синтез"
+                    active: mainCard.activeTab === 0
+                    onClicked: mainCard.activeTab = 0
+                    Layout.fillWidth: true
+                }
+                                WinTabBtn {
+                    tabText: "󰕖  Фразы"
+                    active: mainCard.activeTab === 1
+                    onClicked: mainCard.activeTab = 1
+                    Layout.fillWidth: true
+                }
+                                WinTabBtn {
+                    tabText: "  VirtualMic"
+                    active: mainCard.activeTab === 2
+                    onClicked: mainCard.activeTab = 2
+                    Layout.fillWidth: true
+                }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.3 }
+                        Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: root.colMuted
+                opacity: 0.3
+            }
 
             // ── Вкладка 0: Синтез ─────────────────────────────────────────
             Item {
@@ -118,7 +150,9 @@ PopupWindow {
                                     Layout.fillWidth: true
                                 }
                                 Rectangle {
-                                    width: 6; height: 6; radius: 3
+                                    width: 6
+                                    height: 6
+                                    radius: 3
                                     color: VoiceChangerService.vcRtActive ? root.colGreen
                                          : VoiceChangerService.vcBusy     ? root.colYellow
                                          : VoiceChangerService.vcReady    ? root.colCyan
@@ -126,8 +160,16 @@ PopupWindow {
                                     SequentialAnimation on opacity {
                                         running: VoiceChangerService.vcBusy || VoiceChangerService.vcRtActive
                                         loops:   Animation.Infinite
-                                        NumberAnimation { to: 0.2; duration: 600; easing.type: Easing.InOutSine }
-                                        NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                                                                NumberAnimation {
+                                            to: 0.2
+                                            duration: 600
+                                            easing.type: Easing.InOutSine
+                                        }
+                                                                                NumberAnimation {
+                                            to: 1.0
+                                            duration: 600
+                                            easing.type: Easing.InOutSine
+                                        }
                                     }
                                 }
                                 SmallBtn {
@@ -149,7 +191,12 @@ PopupWindow {
                                 elide:            Text.ElideRight
                             }
 
-                            Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.3 }
+                                                        Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: root.colMuted
+                                opacity: 0.3
+                            }
 
                             ListView {
                                 id: voiceListView
@@ -241,7 +288,12 @@ PopupWindow {
                             }
                         }
 
-                        Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.25 }
+                                                Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: root.colMuted
+                            opacity: 0.25
+                        }
 
                         // TTS input
                         Rectangle {
@@ -317,7 +369,12 @@ PopupWindow {
                             }
                         }
 
-                        Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.25 }
+                                                Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: root.colMuted
+                            opacity: 0.25
+                        }
 
                         BigBtn {
                             btnText:          VoiceChangerService.vcRtActive ? "⏹  Остановить RT" : "⏺  Realtime"
@@ -370,7 +427,12 @@ PopupWindow {
                         }
                     }
 
-                    Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.3 }
+                                        Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: root.colMuted
+                        opacity: 0.3
+                    }
 
                     ListView {
                         id: phraseListView
@@ -476,7 +538,12 @@ PopupWindow {
                         }
                     }
 
-                    Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.3 }
+                                        Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: root.colMuted
+                        opacity: 0.3
+                    }
 
                     // Строка создания нового mic
                     RowLayout {
@@ -598,7 +665,8 @@ PopupWindow {
         height: 30
 
         Rectangle {
-            anchors.fill: parent; radius: 6
+            anchors.fill: parent
+            radius: 6
             color: parent.active ? Qt.rgba(0.37, 0.51, 0.67, 0.25) : "transparent"
             Behavior on color { ColorAnimation { duration: 120 } }
         }
@@ -607,7 +675,9 @@ PopupWindow {
             anchors.bottom: parent.bottom
             anchors.left:   parent.left
             anchors.right:  parent.right
-            height: 2; radius: 1; color: root.colBlue
+            height: 2
+            radius: 1
+            color: root.colBlue
         }
         Text {
             anchors.centerIn: parent
@@ -629,11 +699,13 @@ PopupWindow {
         property bool   btnActive:   true
         property bool   dangerColor: false
         signal clicked
-        width: 24; height: 24
+        width: 24
+        height: 24
         opacity: btnActive ? 1.0 : 0.35
 
         Rectangle {
-            anchors.fill: parent; radius: 5
+            anchors.fill: parent
+            radius: 5
             color: smMa.containsMouse && parent.btnActive
                 ? (parent.dangerColor ? Qt.rgba(0.75, 0.38, 0.41, 0.3) : root.colMuted)
                 : "transparent"
@@ -652,7 +724,8 @@ PopupWindow {
         MouseArea {
             id:           smMa
             anchors.fill: parent
-            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             enabled:      parent.btnActive
             onClicked:    parent.clicked()
         }
@@ -667,9 +740,11 @@ PopupWindow {
         opacity: btnActive ? 1.0 : 0.35
 
         Rectangle {
-            anchors.fill: parent; radius: 6
+            anchors.fill: parent
+            radius: 6
             color: bgMa.containsMouse && parent.btnActive ? root.colMuted : "transparent"
-            border.color: root.colMuted; border.width: 1
+            border.color: root.colMuted
+            border.width: 1
             opacity: bgMa.containsMouse ? 1.0 : 0.35
             Behavior on color { ColorAnimation { duration: 100 } }
         }
@@ -683,7 +758,8 @@ PopupWindow {
         MouseArea {
             id:           bgMa
             anchors.fill: parent
-            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             enabled:      parent.btnActive
             onClicked:    parent.clicked()
         }
@@ -711,7 +787,8 @@ PopupWindow {
             }
             Rectangle {
                 Layout.fillWidth: true
-                height: 4; radius: 2
+                height: 4
+                radius: 2
                 color:  root.colMuted
 
                 Rectangle {

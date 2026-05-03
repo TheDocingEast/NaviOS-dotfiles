@@ -1,0 +1,12 @@
+theme = light:Nord Light,dark:Nordfox
+language = ru
+keybind = ctrl+shift+q=close_tab:this
+font-family = Monaspace Krypton Medium
+confirm-close-surface = false
+window-theme = dark
+
+cursor-style-blink = true
+mouse-hide-while-typing = true
+background-opacity = 0.85
+background-blur = 15
+window-decoration = none 

@@ -8,7 +8,7 @@ configuration {
   display-combi: "Apps:";
   display-emoji: "Emoji:";
   font: "Monaspace Krypton Frozen Medium, Symbola 12, Noto Color Emoji 12";
-  modi: "combi,emoji,calc";
+  modi: "combi,emoji";
   show-icons: true;
 	icon-theme: "Nordzy-dark";
   drun-display-format:            "{name}";

@@ -70,8 +70,20 @@ PopupWindow {
     }
     ParallelAnimation {
         id: anim
-        NumberAnimation { target: card; property: "scale";   to: 1.0; duration: 160; easing.type: Easing.OutCubic }
-        NumberAnimation { target: card; property: "opacity"; to: 1.0; duration: 160; easing.type: Easing.OutCubic }
+                NumberAnimation {
+            target: card
+            property: "scale"
+            to: 1.0
+            duration: 160
+            easing.type: Easing.OutCubic
+        }
+                NumberAnimation {
+            target: card
+            property: "opacity"
+            to: 1.0
+            duration: 160
+            easing.type: Easing.OutCubic
+        }
     }
 
     Timer {
@@ -97,8 +109,14 @@ PopupWindow {
             acceptedButtons:         Qt.NoButton
             propagateComposedEvents: true
             z: 999
-            onEntered: { root.panelHovered = true;  root._checkHide(); }
-            onExited:  { root.panelHovered = false; root._checkHide(); }
+                        onEntered: {
+                root.panelHovered = true
+                root._checkHide()
+            }
+                        onExited:  {
+                root.panelHovered = false
+                root._checkHide()
+            }
         }
 
         ColumnLayout {
@@ -153,7 +171,12 @@ PopupWindow {
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: root.colMuted; opacity: 0.35 }
+                        Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: root.colMuted
+                opacity: 0.35
+            }
 
             // ── Spotify ───────────────────────────────────────────────────
             Text {
@@ -172,10 +195,16 @@ PopupWindow {
                 spacing:          12
 
                 Rectangle {
-                    width: 64; height: 64; radius: 10; color: root.colMuted; clip: true
+                    width: 64
+                    height: 64
+                    radius: 10
+                    color: root.colMuted
+                    clip: true
                     Rectangle {
                         anchors.fill: parent
-                        radius: 10; clip: true; color: "transparent"
+                        radius: 10
+                        clip: true
+                        color: "transparent"
                         Image {
                             id:           coverImg
                             anchors.fill: parent
@@ -197,12 +226,23 @@ PopupWindow {
                         anchors.bottom:   parent.bottom
                         anchors.right:    parent.right
                         anchors.margins:  4
-                        width: 8; height: 8; radius: 4
+                        width: 8
+                        height: 8
+                        radius: 4
                         color: root.colGreen
                         SequentialAnimation on opacity {
-                            running: root.playing; loops: Animation.Infinite
-                            NumberAnimation { to: 0.2; duration: 800; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                            running: root.playing
+                            loops: Animation.Infinite
+                                                        NumberAnimation {
+                                to: 0.2
+                                duration: 800
+                                easing.type: Easing.InOutSine
+                            }
+                                                        NumberAnimation {
+                                to: 1.0
+                                duration: 800
+                                easing.type: Easing.InOutSine
+                            }
                         }
                     }
                 }
@@ -283,7 +323,8 @@ PopupWindow {
                 id:               progressBar
                 visible:          root.hasPlayer
                 Layout.fillWidth: true
-                height: 4; radius: 2
+                height: 4
+                radius: 2
                 color:  root.colMuted
                 readonly property real ratio: (root.hasPlayer && root.spotify && root.spotify.lengthSupported && root.spotify.length > 0)
                     ? Math.min(root.spotify.position / root.spotify.length, 1.0) : 0.0
@@ -342,7 +383,9 @@ PopupWindow {
                 CtrlBtn {
                     btnText:   root.playing ? "󰏤" : "󰐊"
                     btnSize:   root.fontSize + 8
-                    btnW:      44; btnH: 44; btnRadius: 22
+                    btnW:      44
+                    btnH: 44
+                    btnRadius: 22
                     btnActive: root.hasPlayer && root.spotify.canTogglePlaying
                     onClicked: { if (root.spotify) root.spotify.togglePlaying(); }
                 }

@@ -42,7 +42,10 @@ Item {
     // ── Root column ───────────────────────────────────────────────────────
     ColumnLayout {
         id: col
-        anchors { left: parent.left; right: parent.right }
+                anchors {
+            left: parent.left
+            right: parent.right
+        }
         spacing: 0
 
         // ── Header ────────────────────────────────────────────────────────
@@ -56,7 +59,10 @@ Item {
 
             Text {
                 text: "󰂯"
-                font { pixelSize: root.fontSize + 2; family: root.fontFamily }
+                                font {
+                    pixelSize: root.fontSize + 2
+                    family: root.fontFamily
+                }
                 color: root.btOn
                     ? (root.discovering
                         ? (root._blink ? root.colCyan : Qt.rgba(0.56, 0.74, 0.73, 0.25))
@@ -65,7 +71,11 @@ Item {
             }
             Text {
                 text: "Bluetooth"
-                font { pixelSize: root.fontSize; family: root.fontFamily; bold: true }
+                                font {
+                    pixelSize: root.fontSize
+                    family: root.fontFamily
+                    bold: true
+                }
                 color: root.colFg
                 Layout.fillWidth: true
             }
@@ -73,16 +83,21 @@ Item {
             // Scan button
             Item {
                 visible: root.btOn
-                width: 28; height: 28
+                width: 28
+                height: 28
                 Rectangle {
-                    anchors.fill: parent; radius: 5
+                    anchors.fill: parent
+                    radius: 5
                     color: scanHover.containsMouse ? root.colMuted : "transparent"
                     Behavior on color { ColorAnimation { duration: 100 } }
                 }
                 Text {
                     anchors.centerIn: parent
                     text: root.discovering ? "󰅖" : "󰂰"
-                    font { pixelSize: root.fontSize; family: root.fontFamily }
+                                        font {
+                        pixelSize: root.fontSize
+                        family: root.fontFamily
+                    }
                     color: root.discovering ? root.colRed : root.colLBlue
                     ToolTip.visible: scanHover.containsMouse
                     ToolTip.text:    root.discovering ? "Stop scan" : "Scan for devices"
@@ -99,14 +114,19 @@ Item {
 
             // Power toggle
             Item {
-                width: 44; height: 24
+                width: 44
+                height: 24
                 Rectangle {
-                    anchors.fill: parent; radius: 12
+                    anchors.fill: parent
+                    radius: 12
                     color: root.btOn ? root.colCyan : root.colMuted
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
                 Rectangle {
-                    width: 18; height: 18; radius: 9; color: "white"
+                    width: 18
+                    height: 18
+                    radius: 9
+                    color: "white"
                     anchors.verticalCenter: parent.verticalCenter
                     x: root.btOn ? parent.width - width - 3 : 3
                     Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
@@ -122,31 +142,41 @@ Item {
         // ── Divider ───────────────────────────────────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            Layout.leftMargin: 12; Layout.rightMargin: 12
-            height: 1; color: root.colMuted; opacity: 0.4
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            height: 1
+            color: root.colMuted
+            opacity: 0.4
         }
 
         // ── BT off ────────────────────────────────────────────────────────
         Text {
             visible: !root.btOn
             Layout.fillWidth: true
-            Layout.topMargin: 14; Layout.bottomMargin: 14
+            Layout.topMargin: 14
+            Layout.bottomMargin: 14
             horizontalAlignment: Text.AlignHCenter
             text: "Bluetooth is off"
-            font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                        font {
+                pixelSize: root.fontSize - 2
+                family: root.fontFamily
+            }
             color: root.colMuted
         }
 
         // ── Scan indicator ────────────────────────────────────────────────
         RowLayout {
             visible: root.btOn && root.discovering
-            Layout.leftMargin: 14; Layout.topMargin: 6; Layout.bottomMargin: 2
+            Layout.leftMargin: 14
+            Layout.topMargin: 6
+            Layout.bottomMargin: 2
             spacing: 8
 
             // Arc spinner через Canvas
             Canvas {
                 id: arcCanvas
-                width: 16; height: 16
+                width: 16
+                height: 16
 
                 property real angle: 0
                 NumberAnimation on angle {
@@ -189,7 +219,10 @@ Item {
 
             Text {
                 text: "Scanning..."
-                font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                                font {
+                    pixelSize: root.fontSize - 2
+                    family: root.fontFamily
+                }
                 color: root.colMuted
             }
         }
@@ -198,10 +231,14 @@ Item {
         Text {
             visible: root.btOn && root.adapter && root.adapter.devices.count === 0
             Layout.fillWidth: true
-            Layout.topMargin: 12; Layout.bottomMargin: 12
+            Layout.topMargin: 12
+            Layout.bottomMargin: 12
             horizontalAlignment: Text.AlignHCenter
             text: root.discovering ? "Looking for devices..." : "No devices found"
-            font { pixelSize: root.fontSize - 2; family: root.fontFamily }
+                        font {
+                pixelSize: root.fontSize - 2
+                family: root.fontFamily
+            }
             color: root.colMuted
         }
 
@@ -215,8 +252,11 @@ Item {
                 readonly property BluetoothDevice dev: modelData
 
                 Layout.fillWidth: true
-                Layout.leftMargin: 6; Layout.rightMargin: 6; Layout.topMargin: 2
-                height: 52; radius: 7
+                Layout.leftMargin: 6
+                Layout.rightMargin: 6
+                Layout.topMargin: 2
+                height: 52
+                radius: 7
                 color: rowArea.containsMouse
                     ? Qt.rgba(0.3, 0.35, 0.42, 0.55)
                     : dev.connected
@@ -225,12 +265,19 @@ Item {
                 Behavior on color { ColorAnimation { duration: 110 } }
 
                 RowLayout {
-                    anchors { fill: parent; leftMargin: 10; rightMargin: 8 }
+                                        anchors {
+                        fill: parent
+                        leftMargin: 10
+                        rightMargin: 8
+                    }
                     spacing: 10
 
                     Text {
                         text: iconFor(dev.icon)
-                        font { pixelSize: root.fontSize + 4; family: root.fontFamily }
+                                                font {
+                            pixelSize: root.fontSize + 4
+                            family: root.fontFamily
+                        }
                         color: dev.connected ? root.colCyan : root.colMuted
                     }
 
@@ -239,7 +286,11 @@ Item {
                         spacing: 1
                         Text {
                             text: dev.name || "Unknown device"
-                            font { pixelSize: root.fontSize - 1; family: root.fontFamily; bold: dev.connected }
+                                                        font {
+                                pixelSize: root.fontSize - 1
+                                family: root.fontFamily
+                                bold: dev.connected
+                            }
                             color: root.colFg
                             elide: Text.ElideRight
                             Layout.fillWidth: true
@@ -248,13 +299,19 @@ Item {
                             spacing: 6
                             Text {
                                 text: stateLabel(dev.state)
-                                font { pixelSize: root.fontSize - 4; family: root.fontFamily }
+                                                                font {
+                                    pixelSize: root.fontSize - 4
+                                    family: root.fontFamily
+                                }
                                 color: dev.connected ? root.colGreen : root.colMuted
                             }
                             Text {
                                 visible: dev.batteryAvailable
                                 text: batIcon(dev.battery * 100) + " " + Math.round(dev.battery * 100) + "%"
-                                font { pixelSize: root.fontSize - 4; family: root.fontFamily }
+                                                                font {
+                                    pixelSize: root.fontSize - 4
+                                    family: root.fontFamily
+                                }
                                 color: !dev.batteryAvailable ? root.colFg
                                      : dev.battery < 0.20   ? root.colRed
                                      : dev.battery < 0.40   ? root.colYellow
@@ -266,15 +323,20 @@ Item {
 
                     // Quick action button (ЛКМ)
                     Item {
-                        width: 28; height: 28
+                        width: 28
+                        height: 28
                         Rectangle {
-                            anchors.fill: parent; radius: 5
+                            anchors.fill: parent
+                            radius: 5
                             color: actHover.containsMouse ? root.colMuted : "transparent"
                             Behavior on color { ColorAnimation { duration: 100 } }
                         }
                         Text {
                             anchors.centerIn: parent
-                            font { pixelSize: root.fontSize; family: root.fontFamily }
+                                                        font {
+                                pixelSize: root.fontSize
+                                family: root.fontFamily
+                            }
                             text: {
                                 if (dev.pairing)   return "󰅖"
                                 if (!dev.paired)   return "󰌑"
@@ -302,8 +364,14 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (dev.pairing)    { dev.cancelPair(); return }
-                                if (!dev.paired)    { dev.pair();       return }
+                                                                if (dev.pairing)    {
+                                    dev.cancelPair()
+                                    return
+                                }
+                                                                if (!dev.paired)    {
+                                    dev.pair()
+                                    return
+                                }
                                 if (dev.connected)    dev.disconnect()
                                 else                  dev.connect()
                             }
@@ -340,13 +408,17 @@ Item {
                         contentItem: Text {
                             leftPadding: 12
                             text:  parent.text
-                            font { pixelSize: root.fontSize - 1; family: root.fontFamily }
+                                                        font {
+                                pixelSize: root.fontSize - 1
+                                family: root.fontFamily
+                            }
                             color: dev.connected ? root.colRed : root.colGreen
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
                             color: parent.hovered ? root.colMuted : "transparent"
-                            radius: 5; implicitHeight: 34
+                            radius: 5
+                            implicitHeight: 34
                         }
                         onTriggered: dev.connected ? dev.disconnect() : dev.connect()
                     }
@@ -358,21 +430,27 @@ Item {
                         contentItem: Text {
                             leftPadding: 12
                             text:  parent.text
-                            font { pixelSize: root.fontSize - 1; family: root.fontFamily }
+                                                        font {
+                                pixelSize: root.fontSize - 1
+                                family: root.fontFamily
+                            }
                             color: dev.trusted ? root.colYellow : root.colCyan
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
                             color: parent.hovered ? root.colMuted : "transparent"
-                            radius: 5; implicitHeight: 34
+                            radius: 5
+                            implicitHeight: 34
                         }
                         onTriggered: dev.trusted = !dev.trusted
                     }
 
                     MenuSeparator {
                         contentItem: Rectangle {
-                            implicitHeight: 1; implicitWidth: parent.width
-                            color: root.colMuted; opacity: 0.4
+                            implicitHeight: 1
+                            implicitWidth: parent.width
+                            color: root.colMuted
+                            opacity: 0.4
                         }
                     }
 
@@ -383,13 +461,17 @@ Item {
                         contentItem: Text {
                             leftPadding: 12
                             text:  parent.text
-                            font { pixelSize: root.fontSize - 1; family: root.fontFamily }
+                                                        font {
+                                pixelSize: root.fontSize - 1
+                                family: root.fontFamily
+                            }
                             color: dev.paired ? root.colRed : root.colLBlue
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
                             color: parent.hovered ? root.colMuted : "transparent"
-                            radius: 5; implicitHeight: 34
+                            radius: 5
+                            implicitHeight: 34
                         }
                         onTriggered: dev.paired ? dev.forget() : dev.pair()
                     }

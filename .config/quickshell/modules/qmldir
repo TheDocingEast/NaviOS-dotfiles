@@ -1,9 +1,14 @@
-module Modules
+module qs.modules
+
 ControlMenu 1.0 ControlMenu.qml
 Workspaces 1.0 Workspaces.qml
 WorkspacesI3 1.0 WorkspacesI3.qml
 BluetoothModule 1.0 BluetoothModule.qml
 CalendarModule 1.0 CalendarModule.qml
+NotificationHistory 1.0 NotificationHistory.qml
+NotificationPopup 1.0 NotificationPopup.qml
+PerfGauge 1.0 PerfGauge.qml
+PerformanceTab 1.0 PerformanceTab.qml
 SoundModule 1.0 SoundModule.qml
 WifiModule 1.0 WifiModule.qml
 VoicerWindow 1.0 VoicerWindow.qml

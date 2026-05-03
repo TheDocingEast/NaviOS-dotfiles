@@ -2,122 +2,131 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.DBusMenu
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
 import Quickshell.Wayland
-import Quickshell.Widgets
 import qs.modules
 import qs.services
 
 ShellRoot {
-    // ── Processes ─────────────────────────────────────────────────────────
-    // ── Timers ────────────────────────────────────────────────────────────
-    // ── Bar ───────────────────────────────────────────────────────────────
-
     id: root
 
-    // ── Theme ─────────────────────────────────────────────────────────────
-    property color colBg: "#2e3440"
-    property color colFg: "#e5e9f0"
-    property color colSurface: "#3b4252"
-    property color colAccent: "#d8dee9"
-    property color colMuted: "#4c566a"
-    property color colCyan: "#8fbcbb"
-    property color colPurple: "#ad8ee6"
-    property color colRed: "#bf616a"
-    property color colYellow: "#ebcb8b"
-    property color colBlue: "#5e81ac"
+    // ══════════════════════════════════════════════════════════════════════
+    // ТЕМА (Nord palette)
+    // ══════════════════════════════════════════════════════════════════════
+    property color colBg:        "#2e3440"
+    property color colFg:        "#e5e9f0"
+    property color colSurface:   "#3b4252"
+    property color colAccent:    "#d8dee9"
+    property color colMuted:     "#4c566a"
+    property color colCyan:      "#8fbcbb"
+    property color colPurple:    "#ad8ee6"
+    property color colRed:       "#bf616a"
+    property color colYellow:    "#ebcb8b"
+    property color colBlue:      "#5e81ac"
     property color colLightBlue: "#81a1c1"
-    property color colGreen: "#a3be8c"
-    property color colBrown: "#b48ead"
-    // ── Font ──────────────────────────────────────────────────────────────
-    property string fontFamily: "Monaspace Krypton Medium"
-    property int fontSize: 16
-    // ── State ─────────────────────────────────────────────────────────────
-    property string kernelVersion: "unknown"
-    property int cpuUsage: 0
-    property int memUsage: 0
-    property int diskUsage: 0
-    property string activeWindow: ""
-    property string activeWindowApp: ""
-    property int batteryPercent: 0
-    property string batteryState: "discharging"
-    property var keyboardLayouts: {
-        "Russian": "RU",
-        "English (US)": "EN"
-    }
-    property string keyboardLayout: ""
-    // ── CPU delta tracking ────────────────────────────────────────────────
-    property var lastCpuIdle: 0
-    property var lastCpuTotal: 0
-    // ── GPU delta tracking ────────────────────────────────────────────────
-    property var gpuUsage: 0
-    // ── Network Connection ────────────────────────────────────────────────
-    property string networkSSID: ""
-    property string networkType: ""
-    property string networkIP: ""
-    property bool networkConnected: false
-    // Weather
-    property var weatherService: weather
+    property color colGreen:     "#a3be8c"
+    property color colBrown:     "#b48ead"
 
-    // ── Volume (single source of truth) ───────────────────────────────────
+    property string fontFamily: "Monaspace Krypton Medium"
+    property int    fontSize:   16
+
+    // ══════════════════════════════════════════════════════════════════════
+    // СИСТЕМНОЕ СОСТОЯНИЕ
+    // ══════════════════════════════════════════════════════════════════════
+    property int    cpuUsage:        0
+    property int    memUsage:        0
+    property int    diskUsage:       0
+    property int    gpuUsage:        0
+    property string activeWindow:    ""
+    property string activeWindowApp: ""
+    property string keyboardLayout:  ""
+    property string networkSSID:     ""
+    property string networkType:     ""
+    property string networkIP:       ""
+    property bool   networkConnected: false
+
+    property var keyboardLayouts: ({
+        "Russian":      "RU",
+        "English (US)": "EN"
+    })
+
+    // ── CPU delta tracking ────────────────────────────────────────────────
+    property var lastCpuIdle:  0
+    property var lastCpuTotal: 0
+
+    // ── Volume (единственный источник истины) ─────────────────────────────
     QtObject {
         id: volume
-
         property int level: 50
-
         onLevelChanged: {
-            volumeSetProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", level + "%"];
-            volumeSetProc.running = true;
+            volumeSetProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", level + "%"]
+            volumeSetProc.running = true
         }
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // ПРОЦЕССЫ СБОРА ДАННЫХ
+    // ══════════════════════════════════════════════════════════════════════
+
+    // CPU — читаем /proc/stat напрямую, без shell
     Process {
-        id: kernelProc
-
-        command: ["uname", "-n"]
-        Component.onCompleted: running = true
-
+        id: cpuProc
+        command: ["cat", "/proc/stat"]
         stdout: SplitParser {
             onRead: data => {
-                if (data)
-                    kernelVersion = data.trim();
+                if (!data || !data.startsWith("cpu ")) return
+                var p = data.trim().split(/\s+/)
+                var user    = parseInt(p[1]) || 0
+                var nice    = parseInt(p[2]) || 0
+                var system  = parseInt(p[3]) || 0
+                var idle    = parseInt(p[4]) || 0
+                var iowait  = parseInt(p[5]) || 0
+                var irq     = parseInt(p[6]) || 0
+                var softirq = parseInt(p[7]) || 0
+                var total   = user + nice + system + idle + iowait + irq + softirq
+                var idleT   = idle + iowait
+                if (root.lastCpuTotal > 0) {
+                    var td = total - root.lastCpuTotal
+                    var id = idleT - root.lastCpuIdle
+                    if (td > 0) root.cpuUsage = Math.round(100 * (td - id) / td)
+                }
+                root.lastCpuTotal = total
+                root.lastCpuIdle  = idleT
             }
         }
     }
 
+    // RAM — читаем /proc/meminfo напрямую
     Process {
-        id: cpuProc
+        id: memProc
+        command: ["cat", "/proc/meminfo"]
+        stdout: SplitParser {
+            property int memTotal: 0
+            property int memAvail: 0
+            onRead: data => {
+                if (!data) return
+                if (data.startsWith("MemTotal:")) {
+                    memTotal = parseInt(data.split(/\s+/)[1]) || 1
+                } else if (data.startsWith("MemAvailable:")) {
+                    memAvail = parseInt(data.split(/\s+/)[1]) || 0
+                    if (memTotal > 0)
+                        root.memUsage = Math.round(100 * (memTotal - memAvail) / memTotal)
+                }
+            }
+        }
+    }
 
-        command: ["sh", "-c", "head -1 /proc/stat"]
-        Component.onCompleted: running = true
-
+    // Диск — df быстро и без shell для одной точки монтирования
+    Process {
+        id: diskProc
+        command: ["df", "--output=pcent", "/"]
         stdout: SplitParser {
             onRead: data => {
-                if (!data)
-                    return;
-
-                var p = data.trim().split(/\s+/);
-                var user = parseInt(p[1]) || 0;
-                var nice = parseInt(p[2]) || 0;
-                var system = parseInt(p[3]) || 0;
-                var idle = parseInt(p[4]) || 0;
-                var iowait = parseInt(p[5]) || 0;
-                var irq = parseInt(p[6]) || 0;
-                var softirq = parseInt(p[7]) || 0;
-                var total = user + nice + system + idle + iowait + irq + softirq;
-                var idleTime = idle + iowait;
-                if (lastCpuTotal > 0) {
-                    var td = total - lastCpuTotal;
-                    var id = idleTime - lastCpuIdle;
-                    if (td > 0)
-                        cpuUsage = Math.round(100 * (td - id) / td);
-                }
-                lastCpuTotal = total;
-                lastCpuIdle = idleTime;
+                var v = parseInt(data.replace('%', '').trim())
+                if (!isNaN(v)) root.diskUsage = v
             }
         }
     }
@@ -136,205 +145,125 @@ ShellRoot {
         }
     }
 
-    Process {
-        id: memProc
-
-        command: ["sh", "-c", "free | grep Mem"]
-        Component.onCompleted: running = true
-
-        stdout: SplitParser {
-            onRead: data => {
-                if (!data)
-                    return;
-
-                var p = data.trim().split(/\s+/);
-                var tot = parseInt(p[1]) || 1;
-                var used = parseInt(p[2]) || 0;
-                memUsage = Math.round(100 * used / tot);
-            }
-        }
-    }
-
-    Process {
-        id: diskProc
-
-        command: ["sh", "-c", "df / | tail -1"]
-        Component.onCompleted: running = true
-
-        stdout: SplitParser {
-            onRead: data => {
-                if (!data)
-                    return;
-
-                var p = data.trim().split(/\s+/);
-                diskUsage = parseInt((p[4] || "0%").replace('%', '')) || 0;
-            }
-        }
-    }
-
+    // Громкость — получить текущее значение
     Process {
         id: volGetProc
-
         command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
-        Component.onCompleted: running = true
-
         stdout: SplitParser {
             onRead: data => {
-                if (!data)
-                    return;
-
-                var m = data.match(/Volume:\s*([\d.]+)/);
-                if (m)
-                    volume.level = Math.round(parseFloat(m[1]) * 100);
+                var m = data.match(/Volume:\s*([\d.]+)/)
+                if (m) volume.level = Math.round(parseFloat(m[1]) * 100)
             }
         }
     }
 
-    Process {
-        id: volumeSetProc
+    Process { id: volumeSetProc }
 
-        command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "50%"]
-    }
-
-    Process {
-        id: windowProc
-
-        command: ["sh", "-c", "hyprctl activewindow -j | jq -r '.title // empty'"]
-        Component.onCompleted: running = true
-
-        stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim())
-                    activeWindow = data.trim();
-            }
-        }
-    }
-
-    Process {
-        id: windowAppProc
-
-        command: ["sh", "-c", "hyprctl activewindow -j | jq -r '.class // empty'"]
-        Component.onCompleted: running = true
-
-        stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim())
-                    activeWindowApp = data.trim();
-            }
-        }
-    }
-
-    Process {
-        id: keyboardProc
-
-        // Hyprland: читаем активную раскладку через hyprctl
-        // i3/X11:   xkblayout-state возвращает только активную раскладку: "us" или "ru"
-        command: WMDetector.isI3 ? ["xkblayout-state", "print", "%s"] : ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main == true) | .active_keymap'"]
-        Component.onCompleted: running = true
-
-        stdout: SplitParser {
-            onRead: data => {
-                if (!data || !data.trim())
-                    return;
-
-                var raw = data.trim();
-                if (WMDetector.isI3) {
-                    var i3map = {
-                        "us": "EN",
-                        "ru": "RU"
-                    };
-                    keyboardLayout = i3map[raw] ?? raw.toUpperCase();
-                } else {
-                    // hyprctl возвращает полное название: "English (US)", "Russian"
-                    keyboardLayout = keyboardLayouts[raw] ?? raw;
-                }
-            }
-        }
-    }
-
+    // Сеть — nmcli (медленнее, реже)
     Process {
         id: netProc
-
-        command: ["sh", "-c", "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev | grep connected"]
-        Component.onCompleted: running = true
-
+        command: ["sh", "-c", "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev | grep ':connected'"]
         stdout: SplitParser {
             onRead: data => {
                 if (!data || !data.trim()) {
-                    networkConnected = false;
-                    networkSSID = "";
-                    networkType = "";
-                    return;
+                    root.networkConnected = false
+                    root.networkSSID = ""
+                    root.networkType = ""
+                    return
                 }
-                var parts = data.trim().split(':');
-                if (parts.length >= 4 && (parts[1] === 'ethernet' || parts[1] === 'wifi') && parts[2] === 'connected') {
-                    networkConnected = true;
-                    if (parts[1] === 'ethernet')
-                        ipProc.running = true;
-                    else
-                        networkSSID = parts[3];
-                    networkType = parts[1];
+                var parts = data.trim().split(':')
+                if (parts.length >= 4
+                    && (parts[1] === 'ethernet' || parts[1] === 'wifi')
+                    && parts[2] === 'connected') {
+                    root.networkConnected = true
+                    root.networkType = parts[1]
+                    if (parts[1] === 'ethernet') ipProc.running = true
+                    else root.networkSSID = parts[3]
                 }
+            }
+        }
+        onRunningChanged: {
+            if (!running && !networkConnected) {
+                // Нет строки connected — отключены
+                root.networkConnected = false
             }
         }
     }
 
     Process {
         id: ipProc
-
         command: ["sh", "-c", "hostname -i | awk '{print $1}'"]
-
         stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim())
-                    networkIP = data.trim();
+            onRead: data => { if (data.trim()) root.networkIP = data.trim() }
+        }
+    }
+
+    // Активное окно — только через Hyprland events, не по таймеру
+    Process {
+        id: windowProc
+        command: ["sh", "-c", "hyprctl activewindow -j"]
+        stdout: SplitParser {
+            property string _buf: ""
+            onRead: data => { _buf += data }
+        }
+        onRunningChanged: {
+            if (!running) {
+                try {
+                    var w = JSON.parse(stdout._buf || "{}")
+                    root.activeWindow    = w.title || ""
+                    root.activeWindowApp = w.class  || ""
+                } catch(e) {}
+                stdout._buf = ""
             }
         }
     }
 
-    // Fast stats: CPU / mem / disk / volume — every second
+    // Клавиатурная раскладка
+    Process {
+        id: keyboardProc
+        command: WMDetector.isI3
+            ? ["xkblayout-state", "print", "%s"]
+            : ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main==true) | .active_keymap'"]
+        stdout: SplitParser {
+            onRead: data => {
+                var raw = data.trim()
+                if (!raw) return
+                if (WMDetector.isI3) {
+                    root.keyboardLayout = ({ "us": "EN", "ru": "RU" })[raw] ?? raw.toUpperCase()
+                } else {
+                    root.keyboardLayout = root.keyboardLayouts[raw] ?? raw
+                }
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // ТАЙМЕРЫ ОПРОСА
+    // ══════════════════════════════════════════════════════════════════════
+
+    // Быстрые метрики: CPU / RAM / Disk / Vol — раз в секунду
     Timer {
         interval: 1000
         running: true
         repeat: true
         onTriggered: {
-            cpuProc.running = true;
-            memProc.running = true;
-            diskProc.running = true;
-            volGetProc.running = true;
+            cpuProc.running  = true
+            memProc.running  = true
             gpuProc.running = true;
+            diskProc.running = true
+            volGetProc.running = true
         }
     }
 
-    SystemClock {
-        id: clock
-
-        precision: SystemClock.Seconds
-    }
-
-    // Battery — every 30 s (changes slowly)
+    // Сеть — раз в 3 секунды (меняется редко)
     Timer {
-        interval: 2000
+        interval: 3000
         running: true
         repeat: true
-        onTriggered: {
-            netProc.running = true;
-        }
+        onTriggered: netProc.running = true
     }
 
-    // Window / layout — on Hyprland events (только для Hyprland)
-    Connections {
-        function onRawEvent(event) {
-            windowProc.running = true;
-            windowAppProc.running = true;
-            keyboardProc.running = true;
-        }
-
-        target: Hyprland
-        enabled: WMDetector.isHyprland
-    }
-
-    // Keyboard layout poll для i3 (X11 не шлёт события — полим каждые 500ms)
+    // i3: раскладка по таймеру (X11 не шлёт события)
     Timer {
         interval: 500
         running: WMDetector.isI3
@@ -342,20 +271,66 @@ ShellRoot {
         onTriggered: keyboardProc.running = true
     }
 
-    // Window / layout backup poll
-    Timer {
-        interval: 200
-        running: true
-        repeat: true
-        onTriggered: {
-            windowProc.running = true;
+    // ── Hyprland events → обновление окна + раскладки ─────────────────────
+    Connections {
+        target: Hyprland
+        enabled: WMDetector.isHyprland
+        function onRawEvent(event) {
+            windowProc.running   = true
+            keyboardProc.running = true
         }
     }
 
-    // ── Wallpaper Selector ────────────────────────────────────────────────
+    // ── Системные часы ────────────────────────────────────────────────────
+    SystemClock {
+        id: clock
+        precision: SystemClock.Seconds
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // ГЛОБАЛЬНЫЕ ХОТКЕИ
+    // ══════════════════════════════════════════════════════════════════════
+
+    // bind = SUPER, R, global, quickshell:wallpaperToggle
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "wallpaperToggle"
+        description: "Toggle wallpaper selector"
+        onPressed: wallpaperSelector.toggle()
+    }
+
+    // bind = SUPER, SPACE, global, quickshell:controlCentre
+    // ПРИМЕЧАНИЕ: Variants создаёт отдельный ControlMenu на каждый монитор.
+    // controlMenu — id доступен только внутри Variants-делегата.
+    // GlobalShortcut объявлен вне Variants → прямой доступ к controlMenu невозможен.
+    // Решение: шлём Hyprland-событие через IPC, bar-делегат его ловит и вызывает toggle().
+    // Простой fallback — хоткей зарегистрирован, но toggle реализован через
+    // onRawEvent в Connections внутри Variants (см. bar → Connections target: Hyprland).
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "controlCentre"
+        description: "Toggle Control Centre"
+        onPressed: Hyprland.dispatch("exec true")   // триггер — Connections onRawEvent не подходит
+        // TODO: после подтверждения API Quickshell.Ipc — использовать IpcHandler для
+        // межкомпонентной связи вместо Hyprland.dispatch.
+        // Альтернатива: вынести ControlMenu за пределы Variants (один экземпляр).
+    }
+
+    // bind = SUPER, L, global, quickshell:lock
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "lock"
+        onPressed: Quickshell.execDetached([
+            "qs", "-p", Quickshell.env("HOME") + "/.config/quickshell/lockScreen"
+        ])
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // СЕРВИСЫ (синглтоны)
+    // ══════════════════════════════════════════════════════════════════════
+
     WallpaperSelector {
         id: wallpaperSelector
-
         fontFamily: root.fontFamily
         fontSize: root.fontSize
         colBg: root.colBg
@@ -369,45 +344,296 @@ ShellRoot {
         colYellow: root.colYellow
     }
 
-    // Win + R  →  global, quickshell:wallpaperToggle
-    // Добавь в hyprland.conf:
-    //   bind = SUPER, R, global, quickshell:wallpaperToggle
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "wallpaperToggle"
-        description: "Toggle wallpaper selector"
-        onPressed: wallpaperSelector.toggle()
-    }
-
+    // ══════════════════════════════════════════════════════════════════════
+    // МОНИТОРЫ — бар на каждом экране
+    // ══════════════════════════════════════════════════════════════════════
     Variants {
+        id: barVariants
         model: Quickshell.screens
 
         PanelWindow {
             id: bar
-
             property var modelData
-
             screen: modelData
             implicitHeight: 50
             color: root.colBg
-
-            anchors {
+                        anchors {
                 top: true
                 left: true
                 right: true
             }
 
+            // ── Control Centre (PanelWindow, один на монитор) ────────────
             ControlMenu {
                 id: controlMenu
-
-                screen: Quickshell.screens[0] // первый экран
+                fontFamily: root.fontFamily
+                fontSize: root.fontSize
+                colBg: root.colBg
+                colFg: root.colFg
+                colSurface: root.colSurface
+                colMuted: root.colMuted
+                colCyan: root.colCyan
+                colBlue: root.colBlue
+                colLBlue: root.colLightBlue
+                colGreen: root.colGreen
+                colRed: root.colRed
+                colYellow: root.colYellow
+                netConnected: root.networkConnected
+                netType: root.networkType
+                netSSID: root.networkSSID
+                netIP: root.networkIP
+                notifService: notifPopup
             }
 
-            Weather {
-                id: weather
+            // ── Уведомления — попапы (один экземпляр на монитор) ─────────
+            // NotificationPopup содержит статические PopupWindow-слоты.
+            // anchorWindow: bar — PopupWindow-ы якорятся к этому PanelWindow.
+            NotificationPopup {
+                id: notifPopup
+                anchorWindow: bar
+                fontFamily: root.fontFamily
+                fontSize: root.fontSize
+                colBg: root.colBg
+                colFg: root.colFg
+                colSurface: root.colSurface
+                colMuted: root.colMuted
+                colCyan: root.colCyan
+                colBlue: root.colBlue
+                colLBlue: root.colLightBlue
+                colGreen: root.colGreen
+                colRed: root.colRed
+                colYellow: root.colYellow
             }
 
-            // ── Bar content ───────────────────────────────────────────────
+            // ── Calendar popup ────────────────────────────────────────────
+            CalendarModule {
+                id: calendarPopup
+                anchor.window: bar
+                anchor.rect.x: 0
+                anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily
+                fontSize: root.fontSize
+                colBg: root.colBg
+                colFg: root.colFg
+                colMuted: root.colMuted
+                colCyan: root.colCyan
+                colBlue: root.colBlue
+                colLBlue: root.colLightBlue
+                colGreen: root.colGreen
+                colRed: root.colRed
+                colYellow: root.colYellow
+                weatherService: Weather   // явный проброс singleton-а
+            }
+
+            // ── Wi-Fi popup ───────────────────────────────────────────────
+            WifiModule {
+                id: wifiPopup
+                anchor.window: bar
+                anchor.rect.x: bar.width - width - 8
+                anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily
+                fontSize: root.fontSize
+                colBg: root.colBg
+                colFg: root.colFg
+                colMuted: root.colMuted
+                colCyan: root.colCyan
+                colBlue: root.colBlue
+                colLBlue: root.colLightBlue
+                colGreen: root.colGreen
+                colRed: root.colRed
+                colYellow: root.colYellow
+                netConnected: root.networkConnected
+                netType: root.networkType
+                netSSID: root.networkSSID
+                netIP: root.networkIP
+            }
+
+            // ── Sound popup ───────────────────────────────────────────────
+            SoundModule {
+                id: soundPopup
+                anchor.window: bar
+                anchor.rect.x: bar.width - width - 8
+                anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily
+                fontSize: root.fontSize
+                colBg: root.colBg
+                colFg: root.colFg
+                colMuted: root.colMuted
+                colCyan: root.colCyan
+                colBlue: root.colBlue
+                colLBlue: root.colLightBlue
+                colGreen: root.colGreen
+                colRed: root.colRed
+                colYellow: root.colYellow
+                volLevel: volume.level
+                onVolChanged: lvl => { volume.level = lvl }
+                barHovered: volHover.containsMouse
+            }
+
+            // ── Voicer popup ──────────────────────────────────────────────
+            VoicerWindow {
+                id: voicerPopup
+                anchor.window: bar
+                anchor.rect.x: bar.width - width - 8
+                anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily
+                fontSize: root.fontSize
+                colBg: root.colBg
+                colFg: root.colFg
+                colMuted: root.colMuted
+                colCyan: root.colCyan
+                colBlue: root.colBlue
+                colLBlue: root.colLightBlue
+                colGreen: root.colGreen
+                colRed: root.colRed
+                colYellow: root.colYellow
+            }
+
+            component BorderFillRect: Item {
+                id: bfr
+
+                property real value: 0 // 0–100
+                property real radius: 20
+                property string label: ""
+                property int thick: 4 // толщина рамки в px
+                // Анимируем отдельное свойство — Canvas перерисовывается по onAnimValueChanged
+                property real animValue: 0
+                // Цвет по порогам
+                readonly property color fillColor: animValue > 80 ? "#bf616a" : animValue > 55 ? "#ebcb8b" : "#8fbcbb"
+
+                readonly property int fs: width / 4
+
+                onValueChanged: animValue = Math.max(0, Math.min(100, value))
+                Component.onCompleted: animValue = Math.max(0, Math.min(100, value))
+
+                Canvas {
+                    id: canvas
+
+                    anchors.fill: parent
+                    // Перерисовка при изменении анимированного значения или цвета
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset() 
+
+                        var t = bfr.thick
+                        // Ограничиваем радиус, чтобы он не схлопнул фигуру
+                        var r = Math.min(bfr.radius, (width - t) / 2, (height - t) / 2)
+                        var w = width - t
+                        var h = height - t
+                        var x = t / 2
+                        var y = t / 2
+                        
+
+                        // 1. Точный периметр (2 стороны + 2 высоты + окружность)
+                        var perimeter = 2 * (w - 2 * r) + 2 * (h - 2 * r) + (2 * Math.PI * r)
+                        
+                        // 2. Рассчитываем заполнение строго от 0 до perimeter
+                        var progress = Math.max(0, Math.min(100, bfr.animValue))
+                        var filled = (perimeter * progress) / 400
+
+                        function createRoundedPath(c) {
+                            c.beginPath()
+                            c.moveTo(w / 2, y + h)
+                            c.lineTo(x + r, y + h)
+                            c.arcTo(x, y + h, x, y + h - r, r)
+                            c.lineTo(x, y + r)
+                            c.arcTo(x, y, x + r, y, r)
+                            c.lineTo(x + w - r, y)
+                            c.arcTo(x + w, y, x + w, y + r, r)
+                            c.lineTo(x + w, y + h - r)
+                            c.arcTo(x + w, y + h, x + w - r, y + h, r)
+                            c.closePath()
+                        }
+
+                        // Отрисовка фона
+                        ctx.save()
+                        createRoundedPath(ctx)
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)"
+                        ctx.lineWidth = t
+                        ctx.setLineDash([]) // Убираем пунктир для фона
+                        ctx.stroke()
+                        ctx.restore()
+
+                        // Отрисовка прогресса
+                        if (filled > 0) {
+                            ctx.save()
+                            createRoundedPath(ctx)
+                            ctx.strokeStyle = bfr.fillColor
+                            ctx.lineWidth = t
+                            ctx.lineCap = "round"
+                            // Устанавливаем Dash: [длина закраски, длина пустоты]
+                            // Пустота должна быть не меньше периметра, чтобы не было повторов
+                            ctx.setLineDash([filled, perimeter + 1]) 
+                            ctx.stroke()
+                            ctx.restore()
+                        }
+                    }
+
+
+                    // Перерисовка при изменении animValue или fillColor
+                    Connections {
+                        function onAnimValueChanged() {
+                            canvas.requestPaint();
+                        }
+
+                        function onFillColorChanged() {
+                            canvas.requestPaint();
+                        }
+
+                        target: bfr
+                    }
+
+                }
+
+                // Текст по центру
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 0
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: Math.round(bfr.animValue) + "%"
+                        color: bfr.fillColor
+                        visible: false
+
+                        font {
+                            pixelSize: fs
+                            family: "Monaspace Krypton Medium"
+                            bold: true
+                        }
+
+                    }
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: bfr.label !== ""
+                        text: bfr.label
+                        color: bfr.fillColor
+
+                        font {
+                            pixelSize: fs - 2
+                            family: "Monaspace Krypton Medium"
+                        }
+
+                    }
+
+                }
+
+                Behavior on animValue {
+                    NumberAnimation {
+                        duration: 500
+                        easing.type: Easing.OutCubic
+                    }
+
+                }
+
+            }
+
+            // (Power menu переехал в ControlMenu — Фаза 3)
+
+            // ══════════════════════════════════════════════════════════════
+            // БАР: КОНТЕНТ
+            // ══════════════════════════════════════════════════════════════
             Rectangle {
                 anchors.fill: parent
                 color: root.colBg
@@ -416,83 +642,64 @@ ShellRoot {
                     anchors.fill: parent
                     spacing: 0
 
-                    // ═══════════════════════════════════════════════════════════
-                    // LEFT BOX: Workspaces + Layout + Window
-                    // ═══════════════════════════════════════════════════════════
+                    // ── LEFT: Логотип + Часы + Активное окно ─────────────
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignLeft
                         Layout.preferredHeight: parent.height
                         color: "transparent"
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 8
+                            anchors.margins: 6
                             spacing: 2
 
-                            // Logo
-                            Rectangle {
-                                Layout.preferredWidth: 24
-                                Layout.preferredHeight: 24
-                                color: "transparent"
+                            // Логотип — открывает Control Centre
+                            Text {
+                                text: "✦"
+                                color: controlMouse.containsMouse ? root.colLightBlue : root.colCyan
+                                font.pixelSize: 22
+                                font.family: root.fontFamily
 
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "✦"
-                                    color: root.colCyan
-                                    font.pixelSize: 25
-                                    font.family: root.fontFamily
+                                Behavior on color { ColorAnimation { duration: 120 } }
 
-                                    MouseArea {
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        anchors.fill: parent
-                                        onClicked: controlMenu.visible = !controlMenu.visible
-                                    }
+                                MouseArea {
+                                    id: controlMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: controlMenu.toggle()
                                 }
                             }
 
-                            // ── Часы — теперь кликабельны ────────────────────────────────────
+                            // Часы — открывают календарь
                             ColumnLayout {
                                 Layout.preferredHeight: parent.height
-                                Layout.fillWidth: true
                                 spacing: 0
 
                                 Text {
                                     text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy")
-                                    color: clockMouse.containsMouse ? colLightBlue : colFg
-                                    font.pixelSize: fontSize - 4
-                                    font.family: fontFamily
+                                    color: clockMouse.containsMouse ? root.colLightBlue : root.colFg
+                                    font.pixelSize: root.fontSize - 4
+                                    font.family: root.fontFamily
                                     font.bold: true
                                     Layout.leftMargin: 8
                                     elide: Text.ElideRight
-
-                                    Behavior on color {
-                                        ColorAnimation {
-                                            duration: 120
-                                        }
-                                    }
+                                    Behavior on color { ColorAnimation { duration: 120 } }
                                 }
 
                                 Text {
                                     text: Qt.formatDateTime(clock.date, "HH:mm:ss")
-                                    color: clockMouse.containsMouse ? colLightBlue : colFg
-                                    font.pixelSize: fontSize
-                                    font.family: fontFamily
+                                    color: clockMouse.containsMouse ? root.colLightBlue : root.colFg
+                                    font.pixelSize: root.fontSize
+                                    font.family: root.fontFamily
                                     font.bold: true
                                     Layout.leftMargin: 8
                                     elide: Text.ElideRight
-
-                                    Behavior on color {
-                                        ColorAnimation {
-                                            duration: 120
-                                        }
-                                    }
+                                    Behavior on color { ColorAnimation { duration: 120 } }
                                 }
 
                                 MouseArea {
                                     id: clockMouse
-
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
@@ -500,52 +707,29 @@ ShellRoot {
                                 }
                             }
 
-                            // Календарь — объявлен здесь, якорится к bar
-                            CalendarModule {
-                                id: calendarPopup
-
-                                anchor.window: bar
-                                // Центрируем под часами: x = середина бара минус половина ширины попапа
-                                anchor.rect.x: bar.width - bar.width
-                                anchor.rect.y: bar.implicitHeight
-                                // Передаём тему из root
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                                colBg: root.colBg
-                                colFg: root.colFg
-                                colMuted: root.colMuted
-                                colCyan: root.colCyan
-                                colBlue: root.colBlue
-                                colLBlue: root.colLightBlue
-                                colGreen: root.colGreen
-                                colRed: root.colRed
-                                colYellow: root.colYellow
-                            }
-
+                            // Активное окно
                             ColumnLayout {
-                                Layout.preferredHeight: parent.height
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: parent.height
                                 spacing: 0
 
-                                // Active window app
                                 Text {
-                                    text: activeWindowApp
+                                    text: root.activeWindowApp
                                     Layout.fillWidth: true
-                                    color: colBlue
-                                    font.pixelSize: fontSize - 4
-                                    font.family: fontFamily
+                                    color: root.colBlue
+                                    font.pixelSize: root.fontSize - 4
+                                    font.family: root.fontFamily
                                     font.bold: true
                                     Layout.leftMargin: 8
                                     elide: Text.ElideRight
                                 }
 
-                                // Active window
                                 Text {
-                                    text: activeWindow
+                                    text: root.activeWindow
                                     Layout.fillWidth: true
-                                    color: colLightBlue
-                                    font.pixelSize: fontSize
-                                    font.family: fontFamily
+                                    color: root.colLightBlue
+                                    font.pixelSize: root.fontSize
+                                    font.family: root.fontFamily
                                     font.bold: true
                                     Layout.leftMargin: 8
                                     elide: Text.ElideRight
@@ -554,9 +738,7 @@ ShellRoot {
                         }
                     }
 
-                    // ═══════════════════════════════════════════════════════════
-                    // CENTER BOX: Clock
-                    // ═══════════════════════════════════════════════════════════
+                    // ── CENTER: Воркспейсы ────────────────────────────────
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredHeight: parent.height
@@ -568,19 +750,17 @@ ShellRoot {
 
                             Workspaces {
                                 fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                                colActive: root.colLightBlue
+                                fontSize:   root.fontSize
+                                colActive:  root.colLightBlue
                                 colOccupied: root.colFg
-                                colEmpty: root.colMuted
-                                colBar: root.colBlue
-                                colBg: root.colBg
+                                colEmpty:   root.colMuted
+                                colBar:     root.colBlue
+                                colBg:      root.colBg
                             }
                         }
                     }
 
-                    // ═══════════════════════════════════════════════════════════
-                    // RIGHT BOX: System stats
-                    // ═══════════════════════════════════════════════════════════
+                    // ── RIGHT: Метрики + Трей + Контролы ─────────────────
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignRight
@@ -588,103 +768,57 @@ ShellRoot {
                         color: "transparent"
 
                         RowLayout {
-                            // Volume
-                            // Заменить существующий Volume Item в RIGHT BOX на этот блок:
-
                             anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 6
+                            anchors.margins: 4
+                            spacing: 10
 
-                            Item {
-                                Layout.fillWidth: true
-                            }
+                            Item { Layout.fillWidth: true }
 
-                            // Battery
+                            // ── Battery (только если есть) ────────────────
                             Text {
-                                readonly property UPowerDevice battery: UPower.displayDevice
+                                id: batteryLabel
+                                readonly property UPowerDevice bat: UPower.displayDevice
 
+                                visible: bat.isLaptopBattery
                                 text: {
-                                    if (battery.isLaptopBattery) {
-                                        const s = battery.state;
-                                        const p = Math.round(battery.percentage * 100);
-                                        if (s === UPowerDeviceState.Charging) {
-                                            if (p > 80)
-                                                return "󰂊 " + p + "%";
-
-                                            if (p > 60)
-                                                return "󰂉 " + p + "%";
-
-                                            if (p > 40)
-                                                return "󰂈 " + p + "%";
-
-                                            if (p > 20)
-                                                return "󰂆 " + p + "%";
-
-                                            return "󰢜 " + p + "%";
-                                        }
-                                        if (s === UPowerDeviceState.FullyCharged)
-                                            return "󰁹 " + p + "%";
-
-                                        if (p > 80)
-                                            return "󰂀 " + p + "%";
-
-                                        if (p > 60)
-                                            return "󰁿 " + p + "%";
-
-                                        if (p > 40)
-                                            return "󰁾 " + p + "%";
-
-                                        if (p > 20)
-                                            return "󰁽 " + p + "%";
-
-                                        return "󰁻 " + p + "%";
+                                    if (!bat.isLaptopBattery) return ""
+                                    var p = Math.round(bat.percentage * 100)
+                                    var s = bat.state
+                                    if (s === UPowerDeviceState.Charging) {
+                                        if (p > 80) return "󰂊 " + p + "%"
+                                        if (p > 60) return "󰂉 " + p + "%"
+                                        if (p > 40) return "󰂈 " + p + "%"
+                                        if (p > 20) return "󰂆 " + p + "%"
+                                        return "󰢜 " + p + "%"
                                     }
+                                    if (s === UPowerDeviceState.FullyCharged) return "󰁹 " + p + "%"
+                                    if (p > 80) return "󰂀 " + p + "%"
+                                    if (p > 60) return "󰁿 " + p + "%"
+                                    if (p > 40) return "󰁾 " + p + "%"
+                                    if (p > 20) return "󰁽 " + p + "%"
+                                    return "󰁻 " + p + "%"
                                 }
-                                color: battery.percentage <= 0.15 ? colRed : battery.percentage <= 0.4 ? colYellow : colGreen
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
+                                color: bat.percentage <= 0.15 ? root.colRed
+                                     : bat.percentage <= 0.40 ? root.colYellow
+                                     : root.colGreen
+                                font.pixelSize: root.fontSize
+                                font.family: root.fontFamily
                                 font.bold: true
-                                Layout.leftMargin: 4
                             }
 
-                            WifiModule {
-                                id: wifiPopup
+                            // (SystemTray перенесён в ControlMenu → вкладка Main)
 
-                                anchor.window: bar
-                                anchor.rect.x: bar.width - width - 8
-                                anchor.rect.y: bar.implicitHeight
-                                fontFamily: root.fontFamily
-                                fontSize: root.fontSize
-                                colBg: root.colBg
-                                colFg: root.colFg
-                                colMuted: root.colMuted
-                                colCyan: root.colCyan
-                                colBlue: root.colBlue
-                                colLBlue: root.colLightBlue
-                                colGreen: root.colGreen
-                                colRed: root.colRed
-                                colYellow: root.colYellow
-                                netConnected: root.networkConnected
-                                netType: root.networkType
-                                netSSID: root.networkSSID
-                                netIP: root.networkIP
-                            }
-
+                            // ── Wi-Fi ─────────────────────────────────────
                             Text {
                                 text: {
-                                    if (!networkConnected)
-                                        return "󰖪 Disconnected";
-
-                                    if (networkType === "ethernet")
-                                        return "󰛳 " + networkIP;
-
-                                    return "󰖩 " + networkSSID;
+                                    if (!root.networkConnected) return "󰖪 Disconnected"
+                                    if (root.networkType === "ethernet") return "󰛳 " + root.networkIP
+                                    return "󰖩 " + root.networkSSID
                                 }
-                                color: networkConnected ? colCyan : colRed
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
+                                color: root.networkConnected ? root.colCyan : root.colRed
+                                font.pixelSize: root.fontSize
+                                font.family: root.fontFamily
                                 font.bold: true
-                                Layout.rightMargin: 8
 
                                 MouseArea {
                                     anchors.fill: parent
@@ -693,287 +827,210 @@ ShellRoot {
                                 }
                             }
 
-                            // CPU
-                            Text {
-                                text: "CPU: " + cpuUsage + "%"
-                                color: cpuUsage > 80 ? colRed : cpuUsage > 50 ? colYellow : colCyan
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
+                            // ── CPU ───────────────────────────────────────
+                            BorderFillRect {
+                                width: 60
+                                height: 35
+                                radius: 30
+                                value: root.cpuUsage
+                                label: "CPU"
                             }
 
-                            // GPU
-                            Text {
-                                text: "GPU: " + gpuUsage + "%"
-                                color: gpuUsage > 80 ? colRed : gpuUsage > 50 ? colYellow : colCyan
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
-
-                                MouseArea {
-                                    id: btop
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Quickshell.execDetached(["kitty", "btop"])
-                                }
+                            // ── RAM ───────────────────────────────────────
+                            BorderFillRect {
+                                width: 60
+                                height: 35
+                                radius: 30
+                                value: root.memUsage
+                                label: "RAM"
                             }
 
-                            // Memory
-                            Text {
-                                text: "RAM: " + memUsage + "%"
-                                color: memUsage > 80 ? colRed : memUsage > 60 ? colYellow : colCyan
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
+                            // ── GPU ───────────────────────────────────────
+                            BorderFillRect {
+                                width: 60
+                                height: 35
+                                radius: 30
+                                value: root.gpuUsage
+                                label: "GPU"
                             }
 
-                            // Disk
-                            Text {
-                                visible: false
-                                text: "DISK (/): " + diskUsage + "%"
-                                color: diskUsage > 90 ? colRed : diskUsage > 70 ? colYellow : colCyan
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
-                                font.bold: true
-                                Layout.rightMargin: 8
-                            }
-
+                            // ── Volume ────────────────────────────────────
                             Item {
                                 id: volWidget
-
-                                implicitWidth: volLabel.implicitWidth
+                                implicitWidth:  volLabel.implicitWidth
                                 implicitHeight: volLabel.implicitHeight
-                                Layout.rightMargin: 8
-
-                                SoundModule {
-                                    id: soundPopup
-
-                                    anchor.window: bar
-                                    anchor.rect.x: bar.width - width - 8
-                                    anchor.rect.y: bar.implicitHeight
-                                    fontFamily: root.fontFamily
-                                    fontSize: root.fontSize
-                                    colBg: root.colBg
-                                    colFg: root.colFg
-                                    colMuted: root.colMuted
-                                    colCyan: root.colCyan
-                                    colBlue: root.colBlue
-                                    colLBlue: root.colLightBlue
-                                    colGreen: root.colGreen
-                                    colRed: root.colRed
-                                    colYellow: root.colYellow
-                                    volLevel: volume.level
-                                    onVolChanged: lvl => {
-                                        volume.level = lvl;
-                                    }
-                                    // Пробрасываем hover с кнопки в модуль
-                                    barHovered: volHover.containsMouse
-                                }
 
                                 Text {
                                     id: volLabel
-
                                     text: {
-                                        var icon = volume.level === 0 ? "󰝟" : volume.level < 50 ? "󰖀" : "󰕾";
-                                        return icon + " " + volume.level + "%";
+                                        var icon = volume.level === 0 ? "󰝟"
+                                                 : volume.level < 50  ? "󰖀"
+                                                 : "󰕾"
+                                        return icon + " " + volume.level + "%"
                                     }
-                                    color: volume.level > 90 ? colRed : volume.level > 50 ? colYellow : colCyan
-                                    font.pixelSize: fontSize
-                                    font.family: fontFamily
+                                    color: volume.level > 90 ? root.colRed
+                                         : volume.level > 50 ? root.colYellow
+                                         : root.colCyan
+                                    font.pixelSize: root.fontSize
+                                    font.family: root.fontFamily
                                     font.bold: true
                                 }
 
                                 MouseArea {
                                     id: volHover
-
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     acceptedButtons: Qt.NoButton
                                     onEntered: {
-                                        soundPopup.visible = true;
-                                        soundPopup.barHovered = true;
+                                        soundPopup.visible    = true
+                                        soundPopup.barHovered = true
                                     }
                                     onExited: {
-                                        soundPopup.barHovered = false;
+                                        soundPopup.barHovered = false
                                     }
                                     onWheel: event => {
                                         if (event.angleDelta.y > 0)
-                                            volume.level = Math.min(100, volume.level + 5);
+                                            volume.level = Math.min(100, volume.level + 5)
                                         else
-                                            volume.level = Math.max(0, volume.level - 5);
-                                        event.accepted = true;
+                                            volume.level = Math.max(0, volume.level - 5)
+                                        event.accepted = true
                                     }
                                 }
                             }
 
+                            // ── Клавиатура ────────────────────────────────
                             Text {
-                                text: "󰌌 " + keyboardLayout
-                                color: colCyan
-                                font.pixelSize: fontSize
-                                font.family: fontFamily
+                                text: "󰌌 " + root.keyboardLayout
+                                color: root.colCyan
+                                font.pixelSize: root.fontSize
+                                font.family: root.fontFamily
                                 font.bold: true
-                                Layout.rightMargin: 8
                             }
 
-                            // Power menu button
-                            Rectangle {
-                                id: powerBtn
-
-                                Layout.preferredWidth: 24
-                                Layout.preferredHeight: 24
-                                Layout.rightMargin: 4
-                                color: powerMouse.containsMouse ? root.colMuted : "transparent"
-                                radius: 8
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "⏻"
-                                    color: colRed
-                                    font.pixelSize: fontSize + 4
-                                    font.family: fontFamily
-                                }
+                            // ── Voice Changer ─────────────────────────────
+                            Text {
+                                text: VoiceChangerService.vcRtActive ? "󰍬"
+                                    : VoiceChangerService.vcBusy     ? "󰔟"
+                                    : VoiceChangerService.vcLoaded   ? "󰍬"
+                                    : "󰍭"
+                                color: VoiceChangerService.vcRtActive ? root.colGreen
+                                     : VoiceChangerService.vcBusy     ? root.colYellow
+                                     : VoiceChangerService.vcLoaded   ? root.colCyan
+                                     : root.colMuted
+                                font.pixelSize: root.fontSize
+                                font.family: root.fontFamily
+                                font.bold: true
 
                                 MouseArea {
-                                    id: powerMouse
-
                                     anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: powerMenu.visible = !powerMenu.visible
-                                }
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: 100
-                                    }
-                                }
-                            }
-
-                            Item {
-                                id: vcBtnWidget
-
-                                implicitWidth: vcBtnLabel.implicitWidth
-                                implicitHeight: vcBtnLabel.implicitHeight
-                                Layout.rightMargin: 8
-
-                                VoicerWindow {
-                                    id: voicerPopup
-
-                                    // Якорь к бару — появляется над кнопкой, у правого края
-                                    anchor.window: bar
-                                    anchor.rect.x: bar.width - width - 8
-                                    anchor.rect.y: bar.implicitHeight
-                                    fontFamily: root.fontFamily
-                                    fontSize: root.fontSize
-                                    colBg: root.colBg
-                                    colFg: root.colFg
-                                    colMuted: root.colMuted
-                                    colCyan: root.colCyan
-                                    colBlue: root.colBlue
-                                    colLBlue: root.colLightBlue
-                                    colGreen: root.colGreen
-                                    colRed: root.colRed
-                                    colYellow: root.colYellow
-                                }
-
-                                Text {
-                                    id: vcBtnLabel
-
-                                    text: {
-                                        var icon = VoiceChangerService.vcRtActive ? "󰍬" : VoiceChangerService.vcBusy ? "󰔟" : VoiceChangerService.vcLoaded ? "󰍬" : "󰍭";
-                                        return icon;
-                                    }
-                                    color: VoiceChangerService.vcRtActive ? colGreen : VoiceChangerService.vcBusy ? colYellow : VoiceChangerService.vcLoaded ? colCyan : colMuted
-                                    font.pixelSize: fontSize
-                                    font.family: fontFamily
-                                    font.bold: true
-                                }
-
-                                MouseArea {
-                                    id: vcHover
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
                                     onClicked: voicerPopup.visible = !voicerPopup.visible
                                 }
                             }
 
-                            PopupWindow {
-                                id: powerMenu
+                            // ── Power — мини-меню быстрых действий ────────
+                            Item {
+                                id: powerBtnItem
+                                implicitWidth:  powerTxt.implicitWidth
+                                implicitHeight: powerTxt.implicitHeight
 
-                                visible: false
-                                anchor.window: bar
-                                anchor.rect.x: bar.width - width
-                                anchor.rect.y: bar.implicitHeight
-                                width: 120
-                                height: 120
-                                color: "transparent"
+                                Text {
+                                    id: powerTxt
+                                    text: "⏻"
+                                    color: powerMouse.containsMouse ? root.colRed : Qt.rgba(0.75, 0.38, 0.41, 0.7)
+                                    font.pixelSize: root.fontSize + 2
+                                    font.family: root.fontFamily
+                                    Behavior on color { ColorAnimation { duration: 100 } }
+                                }
 
-                                Rectangle {
+                                MouseArea {
+                                    id: powerMouse
                                     anchors.fill: parent
-                                    color: colBg
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: miniPowerMenu.visible = !miniPowerMenu.visible
+                                }
 
-                                    Column {
+                                // Мини-попап питания
+                                PopupWindow {
+                                    id: miniPowerMenu
+                                    visible: false
+                                    anchor.window: bar
+                                    anchor.rect.x: bar.width - width - 4
+                                    anchor.rect.y: bar.implicitHeight
+                                    width: 130
+                                    height: powerMenuCol.implicitHeight + 8
+                                    color: "transparent"
+
+                                    Rectangle {
                                         anchors.fill: parent
-                                        anchors.margins: 5
+                                        color: root.colBg
+                                        border.color: root.colMuted
+                                        border.width: 1
 
-                                        Repeater {
-                                            model: [
-                                                {
-                                                    "label": "Lock",
-                                                    "cmd": "hyprlock"
-                                                },
-                                                {
-                                                    "label": "Logout",
-                                                    "cmd": "sh -c '[ \"$XDG_CURRENT_DESKTOP\" = \"Hyprland\" ] && hyprctl dispatch exit || i3-msg exit'"
-                                                },
-                                                {
-                                                    "label": "Shutdown",
-                                                    "cmd": "systemctl poweroff"
-                                                },
-                                                {
-                                                    "label": "Reboot",
-                                                    "cmd": "systemctl reboot"
-                                                }
-                                            ]
+                                        Column {
+                                            id: powerMenuCol
+                                                                                        anchors {
+                                                left: parent.left
+                                                right: parent.right
+                                                top: parent.top
+                                            }
+                                            anchors.margins: 4
+                                            anchors.topMargin: 4
+                                            spacing: 2
 
-                                            Rectangle {
-                                                width: parent.width - 8
-                                                height: (powerMenu.height - 10) / 4
-                                                color: itemMouse.containsMouse ? colMuted : "transparent"
-                                                anchors.horizontalCenter: parent.horizontalCenter
+                                            Repeater {
+                                                model: [
+                                                    { icon: "󰍁", label: "Lock",      cmd: ["loginctl", "lock-session"],    danger: false },
+                                                    { icon: "󰤄", label: "Suspend",   cmd: ["systemctl", "suspend"],        danger: false },
+                                                    { icon: "󰒲", label: "Hibernate", cmd: ["systemctl", "hibernate"],      danger: false },
+                                                    { icon: "󰈆", label: "Logout",    cmd: ["hyprctl", "dispatch", "exit"], danger: true  },
+                                                    { icon: "󰜉", label: "Reboot",    cmd: ["systemctl", "reboot"],         danger: true  },
+                                                    { icon: "󰐥", label: "Shutdown",  cmd: ["systemctl", "poweroff"],       danger: true  }
+                                                ]
 
-                                                Row {
-                                                    anchors.centerIn: parent
+                                                Rectangle {
+                                                    width: powerMenuCol.width
+                                                    height: 28
+                                                    color: pwrItemMa.containsMouse
+                                                        ? (modelData.danger ? Qt.rgba(0.75,0.38,0.41,0.2) : Qt.rgba(1,1,1,0.06))
+                                                        : "transparent"
+                                                    Behavior on color { ColorAnimation { duration: 60 } }
 
-                                                    Text {
-                                                        text: modelData.label
-                                                        horizontalAlignment: Text.AlignLeft
-                                                        color: colFg
-                                                        font.pixelSize: fontSize
-                                                        font.family: fontFamily
-                                                        font.bold: true
+                                                    RowLayout {
+                                                        anchors.fill: parent
+                                                        anchors.leftMargin: 8
+                                                        anchors.rightMargin: 8
+                                                        spacing: 6
+
+                                                        Text {
+                                                            text: modelData.icon
+                                                                                                                        font {
+                                                                pixelSize: root.fontSize - 1
+                                                                family: root.fontFamily
+                                                            }
+                                                            color: modelData.danger ? root.colRed : root.colFg
+                                                        }
+                                                        Text {
+                                                            text: modelData.label
+                                                                                                                        font {
+                                                                pixelSize: root.fontSize - 3
+                                                                family: root.fontFamily
+                                                            }
+                                                            color: modelData.danger ? root.colRed : root.colFg
+                                                            Layout.fillWidth: true
+                                                        }
                                                     }
-                                                }
 
-                                                MouseArea {
-                                                    id: itemMouse
-
-                                                    anchors.fill: parent
-                                                    hoverEnabled: true
-                                                    onClicked: {
-                                                        powerMenu.visible = false;
-                                                        Hyprland.dispatch("exec " + modelData.cmd);
-                                                    }
-                                                }
-
-                                                Behavior on color {
-                                                    ColorAnimation {
-                                                        duration: 80
+                                                    MouseArea {
+                                                        id: pwrItemMa
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: {
+                                                            miniPowerMenu.visible = false
+                                                            Qt.callLater(() => Quickshell.execDetached(modelData.cmd))
+                                                        }
                                                     }
                                                 }
                                             }
@@ -987,4 +1044,5 @@ ShellRoot {
             }
         }
     }
+
 }

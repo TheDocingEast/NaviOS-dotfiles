@@ -114,7 +114,8 @@ FloatingWindow {
 
                 // Обновить тумбнейлы
                 Rectangle {
-                    width: 26; height: 26
+                    width: 26
+                    height: 26
                     radius: 5
                     color: refreshMa.containsMouse ? root.colLBlue : root.colMuted
 
@@ -137,7 +138,8 @@ FloatingWindow {
 
                 // Закрыть
                 Rectangle {
-                    width: 26; height: 26
+                    width: 26
+                    height: 26
                     radius: 5
                     color: closeMa.containsMouse ? root.colRed : root.colMuted
 
@@ -294,7 +296,8 @@ FloatingWindow {
                                 anchors.top: parent.top
                                 anchors.right: parent.right
                                 anchors.margins: 3
-                                width: 14; height: 14
+                                width: 14
+                                height: 14
                                 radius: 7
                                 color: root.colCyan
                                 visible: isCurrent

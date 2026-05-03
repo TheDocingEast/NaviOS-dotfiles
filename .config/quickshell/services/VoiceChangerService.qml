@@ -35,8 +35,8 @@ Singleton {
     signal voiceChanged()
 
     // ── Пути ──────────────────────────────────────────────────────────────
-    readonly property string voicesJsonPath: "/home/thedocingeast/.config/quickshell/voice/voices.json"
-    readonly property string phrasesDir:     "/home/thedocingeast/.config/quickshell/phrases/"
+    readonly property string voicesJsonPath: Quickshell.env("HOME") + "/.config/quickshell/voice/voices.json"
+    readonly property string phrasesDir:     Quickshell.env("HOME") + "/.config/quickshell/phrases/"
 
     // ── Публичное API ─────────────────────────────────────────────────────
 
@@ -147,12 +147,12 @@ Singleton {
         command: {
             var voices = root.voicesList;
             var v = (voices && voices.length > 0) ? voices[root.currentVoiceIdx] : null;
-            var wav = v ? v.wav : "/home/thedocingeast/.config/quickshell/voice/bt.wav";
+            var wav = v ? v.wav : Quickshell.env("HOME") + "/.config/quickshell/voice/bt.wav";
             var txt = v ? v.txt : "Пилот Силы АМС продолжит нас искать, чтобы выжить нужно встретиться с майором Андерсоном в 60 километрах от нашего местоположения.";
             return [
-                "/home/thedocingeast/miniforge3/envs/Auri/bin/python",
+                Quickshell.env("HOME") + "/miniforge3/envs/Auri/bin/python",
                 "-u",
-                "/home/thedocingeast/.config/quickshell/services/voice_changer.py",
+                Quickshell.env("HOME") + "/.config/quickshell/services/voice_changer.py",
                 "--wav", wav,
                 "--txt", txt
             ];

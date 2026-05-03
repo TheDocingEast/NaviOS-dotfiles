@@ -7,7 +7,12 @@ import QtQuick.Controls
 
 // ── Workspaces widget ─────────────────────────────────────────────────────────
 // Auto-detects running WM: Hyprland or i3
-// Usage: Workspaces { fontFamily: ...; fontSize: ...; colActive: ...; ... }
+// Usage: Workspaces {
+//     fontFamily: ...
+//     fontSize: ...
+//     colActive: ...
+//     ...
+// }
 // ─────────────────────────────────────────────────────────────────────────────
 
 Item {
@@ -79,7 +84,7 @@ Item {
         "pycharm":          "",
         "idea":             "",
         "clion":            "",
-        "kitty":            "",
+        "tty":              "",
         "alacritty":        "",
         "foot":             "",
         "wezterm":          "",
@@ -113,6 +118,7 @@ Item {
         "obsidian":         "󱓩",
         "torrent":          "󰇚",
         "prusa":            "",
+        "orca":             "",
     })
 
     // ── Resolve icon by wsId ──────────────────────────────────────────────────
@@ -294,8 +300,14 @@ Item {
                 width: 32
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: colBg }
-                    GradientStop { position: 0.5; color: "transparent" }
+                                        GradientStop {
+                        position: 0.0
+                        color: colBg
+                    }
+                                        GradientStop {
+                        position: 0.5
+                        color: "transparent"
+                    }
                 }
             }
 
@@ -307,8 +319,14 @@ Item {
                 width: 32
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 1.3; color: colBg }
+                                        GradientStop {
+                        position: 0.0
+                        color: "transparent"
+                    }
+                                        GradientStop {
+                        position: 1.3
+                        color: colBg
+                    }
                 }
             }
         } // Item
