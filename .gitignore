@@ -1,5 +1,4 @@
 *.iso
-*.md
 img/
 .config/hypr/wallpaper/.current_wallpaper
 .config/hypr/wallpaper/current
