@@ -20,7 +20,6 @@
 <br>
 
 </div>
----
  
 ## ✦ Screenshots
  
@@ -111,8 +110,6 @@ NaviOS-dotfiles/
 ---
  
 <div align="center">
-<br>
 *crafted with obsession by* [**TheDocingEast**](https://github.com/TheDocingEast) · [thedocingeast.space](https://www.thedocingeast.space)
- 
-<br>
+
 </div>
