@@ -2,7 +2,7 @@
 
 <br>
 
-[![Typing SVG](https://readme-typing-svg.demolab.com?font=Monaspace+Krypton&weight=600&size=30&pause=1000&color=8FBCBB&center=true&vCenter=true&random=true&width=435&lines=NAVIOS)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Monaspace+Krypton&weight=600&size=60&duration=2000&pause=100&color=8FBCBB&center=true&vCenter=true&random=true&width=500&height=150&lines=NAVIOS)](https://git.io/typing-svg)
 
 **A.U.R.I. — Autonomous User Resource Interface**
 
