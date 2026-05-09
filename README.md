@@ -109,7 +109,4 @@ NaviOS-dotfiles/
 - [r/unixporn](https://reddit.com/r/unixporn)
 ---
  
-<div align="center">
 *crafted with obsession by* [**TheDocingEast**](https://github.com/TheDocingEast) · [thedocingeast.space](https://www.thedocingeast.space)
-
-</div>
