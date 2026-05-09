@@ -49,12 +49,12 @@ The aesthetic draws from sci-fi UI design, deep-space color language, and the ki
 | **OS**          | [Arch Linux](https://archlinux.org/)               |
 | **WM**          | [Hyprland](https://hyprland.org/)                  |
 | **Shell (UI)**  | [Quickshell](https://quickshell.outfoxxed.me/) (QML) |
-| **Terminal**    | [Kitty](https://sw.kovidgoyal.net/kitty/)          |
+| **Terminal**    | [Ghostty](https://ghostty.org/)                    |
 | **Shell**       | Zsh + Oh My Zsh + Powerlevel10k                     |
-| **Editor**      | [Neovim](https://neovim.io/)                        |
+| **Editor**      | [Zed](https://zed.dev/)                             |
 | **Browser**     | Firefox                                             |
-| **Lockscreen**  | Custom QML (replaces hyprlock)                     |
-| **Wallpaper**   | [hyprquickpaper](https://github.com/...) (GIF support) |
+| **Lockscreen**  | Custom QML                     |
+| **Wallpaper**   | [awww](https://codeberg.org/LGFae/awww) (GIF support) |
 | **Compositor**  | Hyprland (built-in)                                 |
 | **Audio**       | PipeWire + custom VoicerWindow TTS/voice changer   |
 | **Fetch**       | fastfetch                                           |
@@ -69,7 +69,6 @@ The aesthetic draws from sci-fi UI design, deep-space color language, and the ki
 - **hyprquickpaper** — wallpaper switcher with GIF support built on top of `swww`  
 - **VoicerWindow** — TTS + PipeWire virtual sink voice changer UI  
 - **Stow-based dotfile management** — clean symlink deployment with `install.sh`  
-- **GLSL shaders** — custom shader effects in the compositor layer  
 - **Powerlevel10k** — tuned prompt with custom p10k config  
 
 ---
@@ -90,10 +89,10 @@ cd ~/NaviOS-dotfiles
 
 Make sure you have the following installed before running:
 
-- `hyprland`, `quickshell`, `kitty`, `zsh`, `stow`
-- `swww` (for wallpaper)
+- `hyprland`, `quickshell`, `ghostty`, `zsh`, `stow`
+- `awww` (for wallpaper)
 - `pipewire`, `wireplumber` (for audio)
-- `fastfetch`, `oh-my-zsh`
+- `fastfetch`, `oh-my-zsh`, `zed`
 
 ---
 
@@ -117,7 +116,6 @@ NaviOS-dotfiles/
 - [Quickshell docs](https://quickshell.outfoxxed.me/)
 - [Hyprland wiki](https://wiki.hyprland.org/)
 - [r/unixporn](https://reddit.com/r/unixporn)
-- [Barbaross93/Nebula](https://github.com/Barbaross93/Nebula) and countless other dotfile authors who inspired this journey
 
 ---
 
