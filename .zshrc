@@ -199,3 +199,4 @@ if [ -f '/home/thedocingeast/yandex-cloud/completion.zsh.inc' ]; then source '/h
 
 export PATH="$HOME/.npm-global/bin:$PATH"
 
+eval "$(direnv hook zsh)"
