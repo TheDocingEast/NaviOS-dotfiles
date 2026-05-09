@@ -48,7 +48,7 @@ The aesthetic draws from sci-fi UI design, deep-space color language, and the ki
 | **Editor**      | [Zed](https://zed.dev/)                             |
 | **Browser**     | Firefox                                             |
 | **Lockscreen**  | Custom QML (replaces hyprlock)                     |
-| **Wallpaper**   | [hyprquickpaper](https://github.com/...) via `awww` (GIF support) |
+| **Wallpaper**   | [awww](https://codeberg.org/LGFae/awww) (GIF support) |
 | **Compositor**  | Hyprland (built-in)                                 |
 | **Audio**       | PipeWire + custom VoicerWindow TTS/voice changer   |
 | **Fetch**       | fastfetch                                           |
@@ -60,7 +60,7 @@ The aesthetic draws from sci-fi UI design, deep-space color language, and the ki
  
 - **Custom QML shell** — bars, widgets, popups, notification center, all written in QML using Quickshell  
 - **Wayland-native lockscreen** — replaces hyprlock, animated, fully integrated with the rest of the shell  
-- **hyprquickpaper** — wallpaper switcher with GIF support built on top of `awww`  
+- **awww** — wallpaper switcher with GIF support 
 - **VoicerWindow** — TTS + PipeWire virtual sink voice changer UI  
 - **Stow-based dotfile management** — clean symlink deployment with `install.sh`  
 - **Powerlevel10k** — tuned prompt with custom p10k config  
@@ -108,7 +108,6 @@ NaviOS-dotfiles/
 - [Quickshell docs](https://quickshell.outfoxxed.me/)
 - [Hyprland wiki](https://wiki.hyprland.org/)
 - [r/unixporn](https://reddit.com/r/unixporn)
-- [Barbaross93/Nebula](https://github.com/Barbaross93/Nebula) and countless other dotfile authors who inspired this journey
 ---
  
 <div align="center">
