@@ -7,16 +7,18 @@
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Monaspace+Krypton&weight=600&size=45&duration=2000&pause=100&color=8FBCBB&center=true&vCenter=true&multiline=true&repeat=false&random=true&width=1000&height=150&lines=Nord-palette+dotfiles+for+Arch)](https://git.io/typing-svg)
 
 **A.U.R.I. — Autonomous User Resource Interface**
- 
+
 *my personal Arch Linux desktop environment, built from scratch*
- 
+
 <br>
+
 ![Arch Linux](https://img.shields.io/badge/Arch_Linux-1793D1?style=flat-square&logo=arch-linux&logoColor=white)
 ![Hyprland](https://img.shields.io/badge/Hyprland-58E1FF?style=flat-square&logo=hyprland&logoColor=black)
 ![QML](https://img.shields.io/badge/Quickshell-41CD52?style=flat-square&logo=qt&logoColor=white)
 ![Wayland](https://img.shields.io/badge/Wayland-FFBC00?style=flat-square&logo=wayland&logoColor=black)
- 
+
 <br>
+
 </div>
 ---
  
