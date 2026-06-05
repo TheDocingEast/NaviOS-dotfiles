@@ -85,7 +85,6 @@ Item {
         "idea":             "",
         "clion":            "",
         "tty":              "",
-        "alacritty":        "",
         "foot":             "",
         "wezterm":          "",
         "konsole":          "",
@@ -332,22 +331,7 @@ Item {
         } // Item
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // i3 implementation
-    // ══════════════════════════════════════════════════════════════════════════
-    Component {
-        id: i3WS
 
-        WorkspacesI3 {
-            fontFamily: workspacesRoot.fontFamily
-            fontSize: workspacesRoot.fontSize
-            colActive: workspacesRoot.colActive
-            colOccupied: workspacesRoot.colOccupied
-            colEmpty: workspacesRoot.colEmpty
-            colBar: workspacesRoot.colBar
-            colBg: workspacesRoot.colBg
-        }
-    }
 
     Component.onCompleted: {
         console.log("WMDetector.name =", WMDetector.name);

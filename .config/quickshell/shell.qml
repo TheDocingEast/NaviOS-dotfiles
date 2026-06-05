@@ -291,13 +291,6 @@ ShellRoot {
     // ГЛОБАЛЬНЫЕ ХОТКЕИ
     // ══════════════════════════════════════════════════════════════════════
 
-    // bind = SUPER, R, global, quickshell:wallpaperToggle
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "wallpaperToggle"
-        description: "Toggle wallpaper selector"
-        onPressed: wallpaperSelector.toggle()
-    }
 
     // bind = SUPER, SPACE, global, quickshell:controlCentre
     // ПРИМЕЧАНИЕ: Variants создаёт отдельный ControlMenu на каждый монитор.
@@ -316,33 +309,14 @@ ShellRoot {
         // Альтернатива: вынести ControlMenu за пределы Variants (один экземпляр).
     }
 
-    // bind = SUPER, L, global, quickshell:lock
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "lock"
-        onPressed: Quickshell.execDetached([
-            "qs", "-p", Quickshell.env("HOME") + "/.config/quickshell/lockScreen"
-        ])
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // СЕРВИСЫ (синглтоны)
-    // ══════════════════════════════════════════════════════════════════════
-
-    WallpaperSelector {
-        id: wallpaperSelector
-        fontFamily: root.fontFamily
-        fontSize: root.fontSize
-        colBg: root.colBg
-        colFg: root.colFg
-        colMuted: root.colMuted
-        colCyan: root.colCyan
-        colBlue: root.colBlue
-        colLBlue: root.colLightBlue
-        colGreen: root.colGreen
-        colRed: root.colRed
-        colYellow: root.colYellow
-    }
+    // // bind = SUPER, L, global, quickshell:lock
+    // GlobalShortcut {
+    //     appid: "quickshell"
+    //     name: "lock"
+    //     onPressed: Quickshell.execDetached([
+    //         "qs", "-p", Quickshell.env("HOME") + "/.config/quickshell/lockScreen"
+    //     ])
+    // }
 
     // ══════════════════════════════════════════════════════════════════════
     // МОНИТОРЫ — бар на каждом экране
@@ -513,7 +487,7 @@ ShellRoot {
                     // Перерисовка при изменении анимированного значения или цвета
                     onPaint: {
                         var ctx = getContext("2d")
-                        ctx.reset() 
+                        ctx.reset()
 
                         var t = bfr.thick
                         // Ограничиваем радиус, чтобы он не схлопнул фигуру
@@ -522,11 +496,11 @@ ShellRoot {
                         var h = height - t
                         var x = t / 2
                         var y = t / 2
-                        
+
 
                         // 1. Точный периметр (2 стороны + 2 высоты + окружность)
                         var perimeter = 2 * (w - 2 * r) + 2 * (h - 2 * r) + (2 * Math.PI * r)
-                        
+
                         // 2. Рассчитываем заполнение строго от 0 до perimeter
                         var progress = Math.max(0, Math.min(100, bfr.animValue))
                         var filled = (perimeter * progress) / 400
@@ -563,7 +537,7 @@ ShellRoot {
                             ctx.lineCap = "round"
                             // Устанавливаем Dash: [длина закраски, длина пустоты]
                             // Пустота должна быть не меньше периметра, чтобы не было повторов
-                            ctx.setLineDash([filled, perimeter + 1]) 
+                            ctx.setLineDash([filled, perimeter + 1])
                             ctx.stroke()
                             ctx.restore()
                         }
@@ -589,34 +563,28 @@ ShellRoot {
                 ColumnLayout {
                     anchors.centerIn: parent
                     spacing: 0
-
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: Math.round(bfr.animValue) + "%"
-                        color: bfr.fillColor
-                        visible: false
-
-                        font {
-                            pixelSize: fs
-                            family: "Monaspace Krypton Medium"
-                            bold: true
-                        }
-
-                    }
-
                     Text {
                         Layout.alignment: Qt.AlignHCenter
                         visible: bfr.label !== ""
                         text: bfr.label
                         color: bfr.fillColor
-
                         font {
                             pixelSize: fs - 2
                             family: "Monaspace Krypton Medium"
                         }
-
                     }
 
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: Math.round(bfr.animValue) + "%"
+                        color: bfr.fillColor
+                        visible: true
+                        font {
+                            pixelSize: fs - 6
+                            family: "Monaspace Krypton Medium"
+                            bold: true
+                        }
+                    }
                 }
 
                 Behavior on animValue {

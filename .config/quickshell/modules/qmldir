@@ -14,3 +14,4 @@ WifiModule 1.0 WifiModule.qml
 VoicerWindow 1.0 VoicerWindow.qml
 singleton WMDetector 1.0 WMDetector.qml
 WallpaperSelector 1.0 WallpaperSelector.qml
+AppLauncher 1.0 AppLauncher.qml

@@ -17,8 +17,8 @@ export PATH=$HOME/miniconda3/bin:$PATH
 source $HOME/.bash_profile
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
-export VISUAL='nvim'
-export EDITOR='nvim'
+export VISUAL='zeditor'
+export EDITOR='zeditor'
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time Oh My Zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
@@ -94,7 +94,6 @@ plugins=(
   zsh-syntax-highlighting
   zsh-autosuggestions
   archlinux
-  aider
 )
 
 
@@ -112,7 +111,7 @@ source $ZSH/oh-my-zsh.sh
  if [[ -n $SSH_CONNECTION ]]; then
    export EDITOR='vim'
  else
-   export EDITOR='code'
+   export EDITOR='zeditor'
  fi
 
 # Compilation flags
@@ -127,14 +126,13 @@ source $ZSH/oh-my-zsh.sh
 # For a full list of active aliases, run `alias`.
 #
 # Example aliases
-alias zshconfig="nvim ~/.zshrc"
-alias ohmyzsh="nvim ~/.oh-my-zsh"
-alias fastconf="nvim ~/.config/fastfetch/config.jsonc"
+alias zshconfig="$EDITOR ~/.zshrc"
+alias ohmyzsh="$EDITOR ~/.oh-my-zsh"
+alias fastconf="$EDITOR ~/.config/fastfetch/config.jsonc"
 alias pwdown="systemctl poweroff"
 alias restart="reboot"
-alias hyprconf="nvim ~/.config/hypr/hyprland.conf"
+alias hyprconf="$EDITOR ~/.config/hypr"
 alias wayconf="cd ~/.config/waybar"
-alias kittyconf="nvim ~/.config/kitty/kitty.conf"
 alias ghosconf="$EDITOR ~/.config/ghostty/config.ghostty"
 alias vencord="~/bin/vencord_install.sh"
 alias install="aura -A"
@@ -142,6 +140,7 @@ alias uninstall="aura -R"
 alias upgradesys="sudo pacman -Syu"
 alias check="sudo pacman -Qs | grep "
 alias rs="rsync"
+alias zed="zeditor"
 alias 2026="echo Year of Linux Desktop"
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
@@ -157,9 +156,6 @@ export PATH="$HOME/.flutter/bin:$PATH"
 export CHROME_EXECUTABLE=/usr/bin/chromium
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/go/bin/hyprls:$PATH"
-export ANTHROPIC_AUTH_TOKEN=ollama
-export ANTHROPIC_API_KEY=""
-export ANTHROPIC_BASE_URL=http://localhost:11434
 export PYTORCH_ALLOC_CONF=expandable_segments:True
 
 # >>> conda initialize >>>
@@ -200,3 +196,4 @@ if [ -f '/home/thedocingeast/yandex-cloud/completion.zsh.inc' ]; then source '/h
 export PATH="$HOME/.npm-global/bin:$PATH"
 
 eval "$(direnv hook zsh)"
+export PATH=$PATH:/usr/lib/qt6/bin

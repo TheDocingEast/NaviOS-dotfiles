@@ -3,7 +3,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-
+import Quickshell.Wayland
+import Quickshell.Hyprland
 PopupWindow {
     id: root
 
@@ -153,8 +154,8 @@ PopupWindow {
         border.color: root.colBlue
         border.width: 2
         radius:       10
-        transformOrigin: Item.Top
         clip: true
+
 
         ColumnLayout {
             id: mainCol
