@@ -2,7 +2,7 @@
 
 <br>
 
-[![Typing SVG](https://readme-typing-svg.demolab.com?font=Monaspace+Krypton&weight=600&size=60&duration=2000&pause=100&color=8FBCBB&center=true&vCenter=true&multiline=true&repeat=false&random=true&width=500&height=150&lines=NAVIOS)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Monaspace+Krypton&weight=600&size=60&duration=2000&pause=100&color=8FBCBB&center=true&vCenter=true&multiline=true&repeat=false&random=true&width=500&height=150&lines=DriftShell)](https://git.io/typing-svg)
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Monaspace+Krypton&weight=600&size=45&duration=2000&pause=100&color=8FBCBB&center=true&vCenter=true&multiline=true&repeat=false&random=true&width=1000&height=150&lines=Nord-palette+dotfiles+for+Arch)](https://git.io/typing-svg)
 
