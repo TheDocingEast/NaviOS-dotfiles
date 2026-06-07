@@ -40,7 +40,7 @@ The aesthetic draws from sci-fi UI design, deep-space color language, and the ki
 | Component       | Program                                             |
 |-----------------|-----------------------------------------------------|
 | **OS**          | [Arch Linux](https://archlinux.org/)               |
-| **WM**          | [Hyprland](https://hyprland.org/)                  |
+| **WM**          | [Niri](https://niri-wm.github.io/niri/index.html)                  |
 | **Shell (UI)**  | [Quickshell](https://quickshell.outfoxxed.me/) (QML) |
 | **Terminal**    | [Ghostty](https://ghostty.org/)                    |
 | **Shell**       | Zsh + Oh My Zsh + Powerlevel10k                     |
@@ -48,8 +48,8 @@ The aesthetic draws from sci-fi UI design, deep-space color language, and the ki
 | **Browser**     | Firefox                                             |
 | **Lockscreen**  | Custom QML (replaces hyprlock)                     |
 | **Wallpaper**   | [awww](https://codeberg.org/LGFae/awww) (GIF support) |
-| **Compositor**  | Hyprland (built-in)                                 |
-| **Audio**       | PipeWire + custom VoicerWindow TTS/voice changer   |
+| **Compositor**  | Niri (built-in)                                 |
+| **Audio**       | PipeWire   |
 | **Fetch**       | fastfetch                                           |
 | **GTK Theme**   | *custom*                                            |
  
@@ -72,8 +72,8 @@ The aesthetic draws from sci-fi UI design, deep-space color language, and the ki
  
 ```bash
 # Clone the repo
-git clone https://github.com/TheDocingEast/NaviOS-dotfiles.git ~/NaviOS-dotfiles
-cd ~/NaviOS-dotfiles
+git clone https://github.com/TheDocingEast/DriftShell.git ~/.dotfiles
+cd ~/.dotfiles
  
 # Run the install script (deploys via GNU stow)
 ./install.sh
@@ -81,7 +81,7 @@ cd ~/NaviOS-dotfiles
  
 Make sure you have the following installed before running:
  
-- `hyprland`, `quickshell`, `ghostty`, `zsh`, `stow`
+- `niri`, `quickshell`, `ghostty`, `zsh`, `stow`
 - `awww` (for wallpaper)
 - `pipewire`, `wireplumber` (for audio)
 - `fastfetch`, `oh-my-zsh`, `zed`
@@ -90,7 +90,7 @@ Make sure you have the following installed before running:
 ## ✦ Structure
  
 ```
-NaviOS-dotfiles/
+.dotfiles/
 ├── .config/          # XDG config (hyprland, quickshell, ghostty, zed, ...)
 ├── .oh-my-zsh/       # Oh My Zsh customizations
 ├── bin/              # Custom scripts and utilities
@@ -105,7 +105,7 @@ NaviOS-dotfiles/
 ## ✦ Inspiration & Credits
  
 - [Quickshell docs](https://quickshell.outfoxxed.me/)
-- [Hyprland wiki](https://wiki.hyprland.org/)
+- [Niri wiki](https://niri-wm.github.io/niri/index.html)
 - [r/unixporn](https://reddit.com/r/unixporn)
 ---
  
