@@ -9,6 +9,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.UPower
+import Quickshell.Services.SystemTray
 import qs.modules
 
 PanelWindow {
@@ -318,7 +319,7 @@ PanelWindow {
                             Layout.fillWidth: true
                             height: 80
                             color: Qt.rgba(0.23, 0.27, 0.31, 0.6)
-                            
+
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.margins: 12
@@ -330,7 +331,7 @@ PanelWindow {
                                     color: cc.colMuted
                                     clip: true
                                     radius: 50
-                                    
+
                                     Image {
                                         id: faceImg
                                         anchors.fill: parent
@@ -395,7 +396,7 @@ PanelWindow {
                             Layout.fillWidth: true
                             implicitHeight: trayContent.implicitHeight + 16
                             color: Qt.rgba(0.18, 0.21, 0.25, 0.4)
-                            visible: SystemTray.items.count > 0
+                            visible: SystemTray.items.values.length > 0
 
                             ColumnLayout {
                                 id: trayContent
@@ -422,50 +423,34 @@ PanelWindow {
                                     spacing: 4
 
                                     Repeater {
-                                        model: SystemTray.items
+                                        model: SystemTray.items.values
 
                                         delegate: Item {
+                                            id: trayDelegate
                                             required property var modelData
+                                            required property int index
                                             width: 28
                                             height: 28
 
-                                            // Иконка — icon это string, прямо Image.source
+                                            // ── Иконка — несколько стратегий загрузки ────────────────
                                             Image {
-                                                id: trayIcon
+                                                id: trayIconTheme
                                                 anchors.fill: parent
                                                 anchors.margins: 3
                                                 source: modelData.icon
                                                 fillMode: Image.PreserveAspectFit
                                                 smooth: true
                                                 visible: status === Image.Ready
+                                                sourceSize.width:  22
+                                                sourceSize.height: 22
                                             }
 
-                                            // Fallback буква
+                                            // ── Hover highlight ───────────────────────────────────────
                                             Rectangle {
                                                 anchors.fill: parent
-                                                anchors.margins: 2
-                                                visible: trayIcon.status !== Image.Ready
-                                                color: Qt.rgba(0.37, 0.51, 0.67, 0.2)
-                                                border.color: cc.colMuted
-                                                border.width: 1
-
-                                                Text {
-                                                    anchors.centerIn: parent
-                                                    text: (modelData.title || "?")[0].toUpperCase()
-                                                    font {
-                                                        pixelSize: cc.fontSize - 4
-                                                        family: cc.fontFamily
-                                                        bold: true
-                                                    }
-                                                    color: cc.colLBlue
-                                                }
-                                            }
-
-                                            // Hover highlight
-                                            Rectangle {
-                                                anchors.fill: parent
+                                                radius: 4
                                                 color: trayItemMa.containsMouse
-                                                    ? Qt.rgba(1,1,1,0.08) : "transparent"
+                                                    ? Qt.rgba(1,1,1,0.1) : "transparent"
                                                 border.color: trayItemMa.containsMouse
                                                     ? cc.colMuted : "transparent"
                                                 border.width: 1
@@ -473,8 +458,11 @@ PanelWindow {
                                             }
 
                                             ToolTip.visible: trayItemMa.containsMouse
-                                            ToolTip.text:    modelData.tooltipTitle || modelData.title || ""
-                                            ToolTip.delay:   500
+                                            ToolTip.text: {
+                                                var d = trayDelegate.modelData
+                                                return d.tooltipTitle || d.tooltipBody || d.title || ""
+                                            }
+                                            ToolTip.delay: 500
 
                                             MouseArea {
                                                 id: trayItemMa
@@ -483,26 +471,27 @@ PanelWindow {
                                                 cursorShape:  Qt.PointingHandCursor
                                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                                                onClicked: mouse => {
+                                                onClicked: function(mouse) {
+                                                    var item = trayDelegate.modelData
                                                     if (mouse.button === Qt.LeftButton) {
-                                                        // Если только меню — сразу показываем его
-                                                        if (modelData.onlyMenu) {
-                                                            modelData.display(cc, mouse.x, mouse.y)
+                                                        if (item.onlyMenu) {
+                                                            // Только меню — показываем D-Bus меню
+                                                            // display(window, globalX, globalY)
+                                                            var gpos = trayItemMa.mapToGlobal(mouse.x, mouse.y)
+                                                            item.display(cc, gpos.x, gpos.y)
                                                         } else {
-                                                            modelData.activate()
+                                                            item.activate()
                                                         }
-                                                    } else {
-                                                        // ПКМ — платформенное меню через display()
-                                                        // display(parentWindow, relativeX, relativeY)
-                                                        // parentWindow — FloatingWindow (cc)
-                                                        // координаты относительно окна cc
-                                                        var pos = trayItemMa.mapToItem(contentRect, mouse.x, mouse.y)
-                                                        modelData.display(cc, pos.x, pos.y)
+                                                    } else if (mouse.button === Qt.RightButton) {
+                                                        // ПКМ — D-Bus контекстное меню
+                                                        var gpos2 = trayItemMa.mapToGlobal(mouse.x, mouse.y)
+                                                        item.display(cc, gpos2.x, gpos2.y)
                                                     }
                                                 }
 
-                                                onWheel: event => {
-                                                    modelData.scroll(event.angleDelta.y > 0 ? 1 : -1, false)
+                                                onWheel: function(event) {
+                                                    trayDelegate.modelData.scroll(
+                                                        event.angleDelta.y > 0 ? 1 : -1, false)
                                                 }
                                             }
                                         }
@@ -511,7 +500,7 @@ PanelWindow {
                             }
                         }
 
-                        CcDivider { visible: SystemTray.items.count > 0 }
+                        CcDivider { visible: SystemTray.items.values.length > 0 }
 
                         // ── Wi-Fi ─────────────────────────────────────────
                         Rectangle {

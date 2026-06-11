@@ -2,20 +2,19 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
+import Quickshell.Services.Notifications
 import Quickshell.Wayland
+import Niri 0.1
 import qs.modules
 import qs.services
 
 ShellRoot {
     id: root
 
-    // ══════════════════════════════════════════════════════════════════════
-    // ТЕМА (Nord palette)
-    // ══════════════════════════════════════════════════════════════════════
+    // ── Тема (Nord) ───────────────────────────────────────────────────────────
     property color colBg:        "#2e3440"
     property color colFg:        "#e5e9f0"
     property color colSurface:   "#3b4252"
@@ -33,31 +32,69 @@ ShellRoot {
     property string fontFamily: "Monaspace Krypton Medium"
     property int    fontSize:   16
 
-    // ══════════════════════════════════════════════════════════════════════
-    // СИСТЕМНОЕ СОСТОЯНИЕ
-    // ══════════════════════════════════════════════════════════════════════
-    property int    cpuUsage:        0
-    property int    memUsage:        0
-    property int    diskUsage:       0
-    property int    gpuUsage:        0
-    property string activeWindow:    ""
-    property string activeWindowApp: ""
-    property string keyboardLayout:  ""
-    property string networkSSID:     ""
-    property string networkType:     ""
-    property string networkIP:       ""
+    // ── Niri IPC ──────────────────────────────────────────────────────────────
+    Niri {
+        id: niri
+        Component.onCompleted: connect()
+        onErrorOccurred: function(error) {
+            console.error("Niri IPC error:", error)
+        }
+    }
+
+    // ── Активное окно и раскладка из niri ────────────────────────────────────
+    readonly property string activeWindow:    niri.focusedWindow?.title  ?? ""
+    readonly property string activeWindowApp: niri.focusedWindow?.appId  ?? ""
+
+    // Раскладка — через sendRawAction + rawEventReceived
+    // niri шлёт KeyboardLayoutsChanged / KeyboardLayoutChanged в event stream
+    property string keyboardLayout: "EN"
+
+    // Раскладка — событие rawEventReceived + poll при старте
+    Connections {
+        target: niri
+        function onRawEventReceived(event) {
+            if (event.hasOwnProperty("KeyboardLayoutChanged")
+             || event.hasOwnProperty("KeyboardLayoutsChanged")) {
+                layoutProc.running = false
+                layoutProc.running = true
+            }
+        }
+    }
+
+    Process {
+        id: layoutProc
+        command: ["niri", "msg", "-j", "keyboard-layouts"]
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                if (!data || !data.trim()) return
+                try {
+                    var obj = JSON.parse(data.trim())
+                    var kl    = obj["keyboard_layouts"] ?? obj
+                    var names = kl["names"] ?? []
+                    var idx   = kl["current_idx"] ?? 0
+                    var name  = (names[idx] ?? "").toLowerCase()
+                    root.keyboardLayout = (name.indexOf("russian") !== -1 || name === "ru") ? "RU" : "EN"
+                } catch(e) {
+                    console.warn("keyboard-layouts parse error:", e)
+                }
+            }
+        }
+    }
+
+    // ── Системное состояние ───────────────────────────────────────────────────
+    property int    cpuUsage:    0
+    property int    memUsage:    0
+    property int    diskUsage:   0
+    property int    gpuUsage:    0
+    property string networkSSID: ""
+    property string networkType: ""
+    property string networkIP:   ""
     property bool   networkConnected: false
 
-    property var keyboardLayouts: ({
-        "Russian":      "RU",
-        "English (US)": "EN"
-    })
-
-    // ── CPU delta tracking ────────────────────────────────────────────────
     property var lastCpuIdle:  0
     property var lastCpuTotal: 0
 
-    // ── Volume (единственный источник истины) ─────────────────────────────
     QtObject {
         id: volume
         property int level: 50
@@ -67,11 +104,7 @@ ShellRoot {
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // ПРОЦЕССЫ СБОРА ДАННЫХ
-    // ══════════════════════════════════════════════════════════════════════
-
-    // CPU — читаем /proc/stat напрямую, без shell
+    // ── Процессы опроса ───────────────────────────────────────────────────────
     Process {
         id: cpuProc
         command: ["cat", "/proc/stat"]
@@ -79,53 +112,46 @@ ShellRoot {
             onRead: data => {
                 if (!data || !data.startsWith("cpu ")) return
                 var p = data.trim().split(/\s+/)
-                var user    = parseInt(p[1]) || 0
-                var nice    = parseInt(p[2]) || 0
-                var system  = parseInt(p[3]) || 0
-                var idle    = parseInt(p[4]) || 0
-                var iowait  = parseInt(p[5]) || 0
-                var irq     = parseInt(p[6]) || 0
-                var softirq = parseInt(p[7]) || 0
-                var total   = user + nice + system + idle + iowait + irq + softirq
-                var idleT   = idle + iowait
+                var user = parseInt(p[1])||0, nice = parseInt(p[2])||0
+                var sys  = parseInt(p[3])||0, idle = parseInt(p[4])||0
+                var iow  = parseInt(p[5])||0, irq  = parseInt(p[6])||0
+                var sirq = parseInt(p[7])||0
+                var total = user+nice+sys+idle+iow+irq+sirq
+                var idleT = idle+iow
                 if (root.lastCpuTotal > 0) {
                     var td = total - root.lastCpuTotal
                     var id = idleT - root.lastCpuIdle
-                    if (td > 0) root.cpuUsage = Math.round(100 * (td - id) / td)
+                    if (td > 0) root.cpuUsage = Math.round(100*(td-id)/td)
                 }
-                root.lastCpuTotal = total
-                root.lastCpuIdle  = idleT
+                root.lastCpuTotal = total; root.lastCpuIdle = idleT
             }
         }
     }
 
-    // RAM — читаем /proc/meminfo напрямую
     Process {
         id: memProc
         command: ["cat", "/proc/meminfo"]
         stdout: SplitParser {
             property int memTotal: 0
-            property int memAvail: 0
             onRead: data => {
                 if (!data) return
-                if (data.startsWith("MemTotal:")) {
+                if (data.startsWith("MemTotal:"))
                     memTotal = parseInt(data.split(/\s+/)[1]) || 1
-                } else if (data.startsWith("MemAvailable:")) {
-                    memAvail = parseInt(data.split(/\s+/)[1]) || 0
+                else if (data.startsWith("MemAvailable:")) {
+                    var avail = parseInt(data.split(/\s+/)[1]) || 0
                     if (memTotal > 0)
-                        root.memUsage = Math.round(100 * (memTotal - memAvail) / memTotal)
+                        root.memUsage = Math.round(100*(memTotal-avail)/memTotal)
                 }
             }
         }
     }
 
-    // Диск — df быстро и без shell для одной точки монтирования
     Process {
         id: diskProc
         command: ["df", "--output=pcent", "/"]
         stdout: SplitParser {
             onRead: data => {
-                var v = parseInt(data.replace('%', '').trim())
+                var v = parseInt(data.replace('%','').trim())
                 if (!isNaN(v)) root.diskUsage = v
             }
         }
@@ -133,59 +159,38 @@ ShellRoot {
 
     Process {
         id: gpuProc
-
         command: ["sh", "-c", "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits"]
-        Component.onCompleted: running = true
-
         stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim())
-                    gpuUsage = data.trim();
-            }
+            onRead: data => { if (data && data.trim()) root.gpuUsage = parseInt(data.trim())||0 }
         }
     }
 
-    // Громкость — получить текущее значение
     Process {
         id: volGetProc
         command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
         stdout: SplitParser {
             onRead: data => {
                 var m = data.match(/Volume:\s*([\d.]+)/)
-                if (m) volume.level = Math.round(parseFloat(m[1]) * 100)
+                if (m) volume.level = Math.round(parseFloat(m[1])*100)
             }
         }
     }
 
     Process { id: volumeSetProc }
 
-    // Сеть — nmcli (медленнее, реже)
     Process {
         id: netProc
         command: ["sh", "-c", "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev | grep ':connected'"]
         stdout: SplitParser {
             onRead: data => {
-                if (!data || !data.trim()) {
-                    root.networkConnected = false
-                    root.networkSSID = ""
-                    root.networkType = ""
-                    return
-                }
+                if (!data || !data.trim()) { root.networkConnected = false; return }
                 var parts = data.trim().split(':')
-                if (parts.length >= 4
-                    && (parts[1] === 'ethernet' || parts[1] === 'wifi')
-                    && parts[2] === 'connected') {
+                if (parts.length >= 4 && (parts[1]==='ethernet'||parts[1]==='wifi') && parts[2]==='connected') {
                     root.networkConnected = true
                     root.networkType = parts[1]
-                    if (parts[1] === 'ethernet') ipProc.running = true
+                    if (parts[1]==='ethernet') ipProc.running = true
                     else root.networkSSID = parts[3]
                 }
-            }
-        }
-        onRunningChanged: {
-            if (!running && !networkConnected) {
-                // Нет строки connected — отключены
-                root.networkConnected = false
             }
         }
     }
@@ -198,131 +203,394 @@ ShellRoot {
         }
     }
 
-    // Активное окно — только через Hyprland events, не по таймеру
-    Process {
-        id: windowProc
-        command: ["sh", "-c", "hyprctl activewindow -j"]
-        stdout: SplitParser {
-            property string _buf: ""
-            onRead: data => { _buf += data }
-        }
-        onRunningChanged: {
-            if (!running) {
-                try {
-                    var w = JSON.parse(stdout._buf || "{}")
-                    root.activeWindow    = w.title || ""
-                    root.activeWindowApp = w.class  || ""
-                } catch(e) {}
-                stdout._buf = ""
-            }
-        }
-    }
-
-    // Клавиатурная раскладка
-    Process {
-        id: keyboardProc
-        command: WMDetector.isI3
-            ? ["xkblayout-state", "print", "%s"]
-            : ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main==true) | .active_keymap'"]
-        stdout: SplitParser {
-            onRead: data => {
-                var raw = data.trim()
-                if (!raw) return
-                if (WMDetector.isI3) {
-                    root.keyboardLayout = ({ "us": "EN", "ru": "RU" })[raw] ?? raw.toUpperCase()
-                } else {
-                    root.keyboardLayout = root.keyboardLayouts[raw] ?? raw
-                }
-            }
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // ТАЙМЕРЫ ОПРОСА
-    // ══════════════════════════════════════════════════════════════════════
-
-    // Быстрые метрики: CPU / RAM / Disk / Vol — раз в секунду
+    // ── Таймеры ───────────────────────────────────────────────────────────────
     Timer {
-        interval: 1000
-        running: true
-        repeat: true
+        interval: 1000; running: true; repeat: true
         onTriggered: {
-            cpuProc.running  = true
-            memProc.running  = true
-            gpuProc.running = true;
-            diskProc.running = true
+            cpuProc.running    = true
+            memProc.running    = true
+            gpuProc.running    = true
+            diskProc.running   = true
             volGetProc.running = true
         }
     }
 
-    // Сеть — раз в 3 секунды (меняется редко)
     Timer {
-        interval: 3000
-        running: true
-        repeat: true
+        interval: 2000; running: true; repeat: true
+        onTriggered: layoutProc.running = true
+    }
+
+    Timer {
+        interval: 3000; running: true; repeat: true
         onTriggered: netProc.running = true
     }
 
-    // i3: раскладка по таймеру (X11 не шлёт события)
-    Timer {
-        interval: 500
-        running: WMDetector.isI3
-        repeat: true
-        onTriggered: keyboardProc.running = true
-    }
+    Component.onCompleted: layoutProc.running = true
 
-    // ── Hyprland events → обновление окна + раскладки ─────────────────────
-    Connections {
-        target: Hyprland
-        enabled: WMDetector.isHyprland
-        function onRawEvent(event) {
-            windowProc.running   = true
-            keyboardProc.running = true
+    SystemClock { id: clock; precision: SystemClock.Seconds }
+
+    // ── NotifCard — визуальная карточка уведомления ─────────────────────────
+    // Используется в статических PopupWindow (notifWin0, notifWin1)
+    component NotifCard: Rectangle {
+        id: cardRoot
+        property var  notif:        null
+        property var  service:      null   // ссылка на NotificationPopup
+        property int  slotIndex:    0
+        property int  autoCloseMs:  4500
+        property bool popupVisible: false
+
+        implicitHeight: cardLayout.implicitHeight + 20
+        color: service ? Qt.rgba(
+            Qt.color(service.colSurface).r,
+            Qt.color(service.colSurface).g,
+            Qt.color(service.colSurface).b,
+            0.97) : "#3b4252"
+
+        border.color: {
+            if (!notif || !service) return service ? service.colMuted : "#4c566a"
+            if (notif.urgency === NotificationUrgency.Critical) return service.colRed
+            if (notif.urgency === NotificationUrgency.Low)      return service.colMuted
+            return service.colBlue
+        }
+        border.width: 1
+
+        // Анимация появления
+        opacity: 0
+        NumberAnimation on opacity {
+            running: popupVisible && notif !== null
+            from: 0; to: 1
+            duration: 160; easing.type: Easing.OutCubic
+        }
+
+        // ── Автозакрытие ──────────────────────────────────────────────────
+        Timer {
+            id: cardAutoTimer
+            interval: cardRoot.autoCloseMs
+            running: cardRoot.popupVisible && cardRoot.notif !== null
+            repeat: false
+            onTriggered: {
+                if (cardRoot.notif) cardRoot.notif.expire()
+                if (cardRoot.service) cardRoot.service.dismissSlot(cardRoot.slotIndex)
+            }
+        }
+
+        // ── Прогресс-бар таймера ──────────────────────────────────────────
+        property real timerElapsed: 0
+        Timer {
+            interval: 80
+            running: cardAutoTimer.running
+            repeat: true
+            onTriggered: cardRoot.timerElapsed = Math.min(cardRoot.timerElapsed + 80, cardRoot.autoCloseMs)
+        }
+        onPopupVisibleChanged: if (!popupVisible) timerElapsed = 0
+
+        // Hover — пауза таймера
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+            onEntered: cardAutoTimer.running = false
+            onExited:  cardAutoTimer.running = cardRoot.popupVisible && cardRoot.notif !== null
+            z: -1
+        }
+
+        ColumnLayout {
+            id: cardLayout
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+            spacing: 6
+
+            // ── Заголовок: иконка + имя + summary + закрыть ──────────────
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                // Иконка
+                Item {
+                    width: 24; height: 24
+                    visible: cardRoot.notif !== null
+                    Image {
+                        id: cardIcon
+                        anchors.fill: parent
+                        source: {
+                            if (!cardRoot.notif) return ""
+                            var ic = cardRoot.notif.appIcon || ""
+                            if (!ic) return ""
+                            if (ic.startsWith("/")) return "file://" + ic
+                            return "image://icon/" + ic
+                        }
+                        fillMode: Image.PreserveAspectFit
+                        visible: status === Image.Ready
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: cardRoot.notif !== null && !cardIcon.visible
+                        color: Qt.rgba(0.37, 0.51, 0.67, 0.2)
+                        Text {
+                            anchors.centerIn: parent
+                            text: cardRoot.notif ? (cardRoot.notif.appName || "?")[0].toUpperCase() : "?"
+                            font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 4 : 12
+                            font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                            font.bold: true
+                            color: cardRoot.service ? cardRoot.service.colLBlue : "#81a1c1"
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true; spacing: 1
+                    Text {
+                        text: cardRoot.notif ? (cardRoot.notif.appName || "") : ""
+                        font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 5 : 11
+                        font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                        color: cardRoot.service ? cardRoot.service.colMuted : "#4c566a"
+                        elide: Text.ElideRight; Layout.fillWidth: true
+                    }
+                    Text {
+                        text: cardRoot.notif ? (cardRoot.notif.summary || "") : ""
+                        font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 2 : 14
+                        font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                        font.bold: true
+                        color: cardRoot.service ? cardRoot.service.colFg : "#d8dee9"
+                        elide: Text.ElideRight; Layout.fillWidth: true
+                    }
+                }
+
+                // Закрыть
+                Text {
+                    text: "✕"
+                    font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 4 : 12
+                    font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                    color: cardCloseMa.containsMouse
+                        ? (cardRoot.service ? cardRoot.service.colFg : "#d8dee9")
+                        : (cardRoot.service ? cardRoot.service.colMuted : "#4c566a")
+                    MouseArea {
+                        id: cardCloseMa
+                        anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            cardAutoTimer.stop()
+                            if (cardRoot.notif) cardRoot.notif.dismiss()
+                            if (cardRoot.service) cardRoot.service.dismissSlot(cardRoot.slotIndex)
+                        }
+                    }
+                }
+            }
+
+            // ── Тело ─────────────────────────────────────────────────────
+            Text {
+                visible: cardRoot.notif !== null && (cardRoot.notif.body || "") !== ""
+                text: cardRoot.notif ? (cardRoot.notif.body || "") : ""
+                Layout.fillWidth: true
+                font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 4 : 12
+                font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                color: cardRoot.service ? cardRoot.service.colFg : "#d8dee9"
+                opacity: 0.85
+                wrapMode: Text.WordWrap
+                maximumLineCount: 3
+                elide: Text.ElideRight
+            }
+
+            // ── Действия ─────────────────────────────────────────────────
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+                visible: cardRoot.notif !== null
+                    && cardRoot.notif.actions !== undefined
+                    && cardRoot.notif.actions.length > 0
+
+                Repeater {
+                    model: cardRoot.notif ? cardRoot.notif.actions : []
+                    delegate: Item {
+                        required property var modelData
+                        Layout.fillWidth: true; height: 22
+                        Rectangle {
+                            anchors.fill: parent
+                            color: actMa2.containsMouse
+                                ? Qt.rgba(0.37, 0.51, 0.67, 0.25)
+                                : Qt.rgba(0.37, 0.51, 0.67, 0.10)
+                            border.color: cardRoot.service ? cardRoot.service.colBlue : "#5e81ac"
+                            border.width: 1
+                        }
+                        Text {
+                            anchors.centerIn: parent
+                            text: modelData.label || modelData.identifier || ""
+                            font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 5 : 11
+                            font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                            color: cardRoot.service ? cardRoot.service.colLBlue : "#81a1c1"
+                            elide: Text.ElideRight
+                        }
+                        MouseArea {
+                            id: actMa2
+                            anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                cardAutoTimer.stop()
+                                if (cardRoot.notif)
+                                    cardRoot.notif.sendActionInvoked(modelData.identifier)
+                                if (cardRoot.service) cardRoot.service.dismissSlot(cardRoot.slotIndex)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Таймер-полоска ────────────────────────────────────────────
+            Rectangle {
+                Layout.fillWidth: true; height: 2
+                color: cardRoot.service ? cardRoot.service.colMuted : "#4c566a"
+                opacity: 0.3
+                Rectangle {
+                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                    width: cardRoot.autoCloseMs > 0
+                        ? parent.width * (1.0 - cardRoot.timerElapsed / cardRoot.autoCloseMs)
+                        : 0
+                    color: (cardRoot.notif && cardRoot.notif.urgency === NotificationUrgency.Critical)
+                        ? (cardRoot.service ? cardRoot.service.colRed    : "#bf616a")
+                        : (cardRoot.service ? cardRoot.service.colCyan   : "#8fbcbb")
+                }
+            }
+
+            Item { height: 2 }
         }
     }
 
-    // ── Системные часы ────────────────────────────────────────────────────
-    SystemClock {
-        id: clock
-        precision: SystemClock.Seconds
+    // ── BorderFillRect ────────────────────────────────────────────────────────
+    component BorderFillRect: Item {
+        id: bfr
+        property real value:  0
+        property real radius: 20
+        property string label: ""
+        property int thick: 4
+        property real animValue: 0
+        readonly property color fillColor: animValue > 80 ? "#bf616a"
+                                         : animValue > 55 ? "#ebcb8b" : "#8fbcbb"
+        readonly property int fs: width / 4
+        onValueChanged: animValue = Math.max(0, Math.min(100, value))
+        Component.onCompleted: animValue = Math.max(0, Math.min(100, value))
+
+        Canvas {
+            id: canvas
+            anchors.fill: parent
+            onPaint: {
+                var ctx = getContext("2d"); ctx.reset()
+                var t = bfr.thick, r = Math.min(bfr.radius, (width-t)/2, (height-t)/2)
+                var w = width-t, h = height-t, x = t/2, y = t/2
+                var perim = 2*(w-2*r)+2*(h-2*r)+2*Math.PI*r
+                var filled = perim*Math.max(0,Math.min(100,bfr.animValue))/400
+                function path(c) {
+                    c.beginPath(); c.moveTo(w/2,y+h)
+                    c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r)
+                    c.lineTo(x,y+r);   c.arcTo(x,y,x+r,y,r)
+                    c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r)
+                    c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r)
+                    c.closePath()
+                }
+                ctx.save(); path(ctx)
+                ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=t; ctx.setLineDash([]); ctx.stroke(); ctx.restore()
+                if (filled>0) {
+                    ctx.save(); path(ctx)
+                    ctx.strokeStyle=bfr.fillColor; ctx.lineWidth=t; ctx.lineCap="round"
+                    ctx.setLineDash([filled,perim+1]); ctx.stroke(); ctx.restore()
+                }
+            }
+            Connections {
+                target: bfr
+                function onAnimValueChanged() { canvas.requestPaint() }
+                function onFillColorChanged()  { canvas.requestPaint() }
+            }
+        }
+        ColumnLayout {
+            anchors.centerIn: parent; spacing: 0
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                visible: bfr.label !== ""; text: bfr.label; color: bfr.fillColor
+                font { pixelSize: bfr.fs-2; family: "Monaspace Krypton Medium" }
+            }
+        }
+        Behavior on animValue { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // ГЛОБАЛЬНЫЕ ХОТКЕИ
-    // ══════════════════════════════════════════════════════════════════════
 
-
-    // bind = SUPER, SPACE, global, quickshell:controlCentre
-    // ПРИМЕЧАНИЕ: Variants создаёт отдельный ControlMenu на каждый монитор.
-    // controlMenu — id доступен только внутри Variants-делегата.
-    // GlobalShortcut объявлен вне Variants → прямой доступ к controlMenu невозможен.
-    // Решение: шлём Hyprland-событие через IPC, bar-делегат его ловит и вызывает toggle().
-    // Простой fallback — хоткей зарегистрирован, но toggle реализован через
-    // onRawEvent в Connections внутри Variants (см. bar → Connections target: Hyprland).
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "controlCentre"
-        description: "Toggle Control Centre"
-        onPressed: Hyprland.dispatch("exec true")   // триггер — Connections onRawEvent не подходит
-        // TODO: после подтверждения API Quickshell.Ipc — использовать IpcHandler для
-        // межкомпонентной связи вместо Hyprland.dispatch.
-        // Альтернатива: вынести ControlMenu за пределы Variants (один экземпляр).
+    // ── Notification service — SINGLETON at ShellRoot level ──────────────────
+    // NotificationServer регистрирует D-Bus сервис. Должен быть ОДИН экземпляр.
+    // Размещаем вне Variants, чтобы он не дублировался на каждом мониторе.
+    NotificationPopup {
+        id: notifPopup
+        fontFamily: root.fontFamily; fontSize: root.fontSize
+        colBg: root.colBg; colFg: root.colFg; colSurface: root.colSurface
+        colMuted: root.colMuted; colCyan: root.colCyan; colBlue: root.colBlue
+        colLBlue: root.colLightBlue; colGreen: root.colGreen
+        colRed: root.colRed; colYellow: root.colYellow
     }
 
-    // // bind = SUPER, L, global, quickshell:lock
-    // GlobalShortcut {
-    //     appid: "quickshell"
-    //     name: "lock"
-    //     onPressed: Quickshell.execDetached([
-    //         "qs", "-p", Quickshell.env("HOME") + "/.config/quickshell/lockScreen"
-    //     ])
-    // }
+    // ── Invisible anchor window for notification popups ───────────────────────
+    // PopupWindow требует anchor.window типа Window. Используем отдельный
+    // PanelWindow с нулевой высотой на первом экране как якорь для попапов.
+    PanelWindow {
+        id: notifAnchorBar
+        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        implicitHeight: 0
+        color: "transparent"
+        exclusionMode: ExclusionMode.Normal
+        anchors { top: true; left: true; right: true }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // МОНИТОРЫ — бар на каждом экране
-    // ══════════════════════════════════════════════════════════════════════
+        Connections {
+            target: notifPopup
+            function onSlotActivated(slotIdx, n) {
+                if (slotIdx === 0) { notifWin0.currentNotif = n; notifWin0.visible = true }
+                else if (slotIdx === 1) { notifWin1.currentNotif = n; notifWin1.visible = true }
+            }
+            function onSlotDeactivated(slotIdx) {
+                if (slotIdx === 0) notifWin0.visible = false
+                else if (slotIdx === 1) notifWin1.visible = false
+            }
+        }
+
+        PopupWindow {
+            id: notifWin0
+            property var currentNotif: null
+            anchor.window: notifAnchorBar
+            anchor.rect.x: notifAnchorBar.width - notifPopup.popupWidth - notifPopup.rightOffset
+            anchor.rect.y: notifPopup.topOffset
+            implicitWidth:  notifPopup.popupWidth
+            implicitHeight: notifCard0.implicitHeight + 2
+            visible: false
+            color: "transparent"
+            NotifCard {
+                id: notifCard0
+                anchors.fill: parent
+                notif: notifWin0.currentNotif
+                service: notifPopup
+                slotIndex: 0
+                autoCloseMs: notifPopup.autoCloseMs
+                popupVisible: notifWin0.visible
+            }
+        }
+
+        PopupWindow {
+            id: notifWin1
+            property var currentNotif: null
+            anchor.window: notifAnchorBar
+            anchor.rect.x: notifAnchorBar.width - notifPopup.popupWidth - notifPopup.rightOffset
+            anchor.rect.y: notifPopup.topOffset + 130
+            implicitWidth:  notifPopup.popupWidth
+            implicitHeight: notifCard1.implicitHeight + 2
+            visible: false
+            color: "transparent"
+            NotifCard {
+                id: notifCard1
+                anchors.fill: parent
+                notif: notifWin1.currentNotif
+                service: notifPopup
+                slotIndex: 1
+                autoCloseMs: notifPopup.autoCloseMs
+                popupVisible: notifWin1.visible
+            }
+        }
+    }
+
+    // ── Бар на каждом мониторе ────────────────────────────────────────────────
     Variants {
-        id: barVariants
         model: Quickshell.screens
 
         PanelWindow {
@@ -331,674 +599,302 @@ ShellRoot {
             screen: modelData
             implicitHeight: 50
             color: root.colBg
-                        anchors {
-                top: true
-                left: true
-                right: true
-            }
+            anchors { top: true; left: true; right: true }
 
-            // ── Control Centre (PanelWindow, один на монитор) ────────────
             ControlMenu {
                 id: controlMenu
-                fontFamily: root.fontFamily
-                fontSize: root.fontSize
-                colBg: root.colBg
-                colFg: root.colFg
-                colSurface: root.colSurface
-                colMuted: root.colMuted
-                colCyan: root.colCyan
-                colBlue: root.colBlue
-                colLBlue: root.colLightBlue
-                colGreen: root.colGreen
-                colRed: root.colRed
-                colYellow: root.colYellow
-                netConnected: root.networkConnected
-                netType: root.networkType
-                netSSID: root.networkSSID
-                netIP: root.networkIP
+                fontFamily: root.fontFamily; fontSize: root.fontSize
+                colBg: root.colBg; colFg: root.colFg; colSurface: root.colSurface
+                colMuted: root.colMuted; colCyan: root.colCyan; colBlue: root.colBlue
+                colLBlue: root.colLightBlue; colGreen: root.colGreen
+                colRed: root.colRed; colYellow: root.colYellow
+                netConnected: root.networkConnected; netType: root.networkType
+                netSSID: root.networkSSID; netIP: root.networkIP
                 notifService: notifPopup
             }
 
-            // ── Уведомления — попапы (один экземпляр на монитор) ─────────
-            // NotificationPopup содержит статические PopupWindow-слоты.
-            // anchorWindow: bar — PopupWindow-ы якорятся к этому PanelWindow.
-            NotificationPopup {
-                id: notifPopup
-                anchorWindow: bar
-                fontFamily: root.fontFamily
-                fontSize: root.fontSize
-                colBg: root.colBg
-                colFg: root.colFg
-                colSurface: root.colSurface
-                colMuted: root.colMuted
-                colCyan: root.colCyan
-                colBlue: root.colBlue
-                colLBlue: root.colLightBlue
-                colGreen: root.colGreen
-                colRed: root.colRed
-                colYellow: root.colYellow
-            }
 
-            // ── Calendar popup ────────────────────────────────────────────
             CalendarModule {
-                id: calendarPopup
-                anchor.window: bar
-                anchor.rect.x: 0
-                anchor.rect.y: bar.implicitHeight
-                fontFamily: root.fontFamily
-                fontSize: root.fontSize
-                colBg: root.colBg
-                colFg: root.colFg
-                colMuted: root.colMuted
-                colCyan: root.colCyan
-                colBlue: root.colBlue
-                colLBlue: root.colLightBlue
-                colGreen: root.colGreen
-                colRed: root.colRed
-                colYellow: root.colYellow
-                weatherService: Weather   // явный проброс singleton-а
+                id: calendarPopup; anchor.window: bar
+                anchor.rect.x: 0; anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily; fontSize: root.fontSize
+                colBg: root.colBg; colFg: root.colFg; colMuted: root.colMuted
+                colCyan: root.colCyan; colBlue: root.colBlue
+                colLBlue: root.colLightBlue; colGreen: root.colGreen
+                colRed: root.colRed; colYellow: root.colYellow
+                weatherService: Weather
             }
 
-            // ── Wi-Fi popup ───────────────────────────────────────────────
             WifiModule {
-                id: wifiPopup
-                anchor.window: bar
-                anchor.rect.x: bar.width - width - 8
-                anchor.rect.y: bar.implicitHeight
-                fontFamily: root.fontFamily
-                fontSize: root.fontSize
-                colBg: root.colBg
-                colFg: root.colFg
-                colMuted: root.colMuted
-                colCyan: root.colCyan
-                colBlue: root.colBlue
-                colLBlue: root.colLightBlue
-                colGreen: root.colGreen
-                colRed: root.colRed
-                colYellow: root.colYellow
-                netConnected: root.networkConnected
-                netType: root.networkType
-                netSSID: root.networkSSID
-                netIP: root.networkIP
+                id: wifiPopup; anchor.window: bar
+                anchor.rect.x: bar.width-width-8; anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily; fontSize: root.fontSize
+                colBg: root.colBg; colFg: root.colFg; colMuted: root.colMuted
+                colCyan: root.colCyan; colBlue: root.colBlue
+                colLBlue: root.colLightBlue; colGreen: root.colGreen
+                colRed: root.colRed; colYellow: root.colYellow
+                netConnected: root.networkConnected; netType: root.networkType
+                netSSID: root.networkSSID; netIP: root.networkIP
             }
 
-            // ── Sound popup ───────────────────────────────────────────────
             SoundModule {
-                id: soundPopup
-                anchor.window: bar
-                anchor.rect.x: bar.width - width - 8
-                anchor.rect.y: bar.implicitHeight
-                fontFamily: root.fontFamily
-                fontSize: root.fontSize
-                colBg: root.colBg
-                colFg: root.colFg
-                colMuted: root.colMuted
-                colCyan: root.colCyan
-                colBlue: root.colBlue
-                colLBlue: root.colLightBlue
-                colGreen: root.colGreen
-                colRed: root.colRed
-                colYellow: root.colYellow
+                id: soundPopup; anchor.window: bar
+                anchor.rect.x: bar.width-width-8; anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily; fontSize: root.fontSize
+                colBg: root.colBg; colFg: root.colFg; colMuted: root.colMuted
+                colCyan: root.colCyan; colBlue: root.colBlue
+                colLBlue: root.colLightBlue; colGreen: root.colGreen
+                colRed: root.colRed; colYellow: root.colYellow
                 volLevel: volume.level
                 onVolChanged: lvl => { volume.level = lvl }
                 barHovered: volHover.containsMouse
             }
 
-            // ── Voicer popup ──────────────────────────────────────────────
             VoicerWindow {
-                id: voicerPopup
-                anchor.window: bar
-                anchor.rect.x: bar.width - width - 8
-                anchor.rect.y: bar.implicitHeight
-                fontFamily: root.fontFamily
-                fontSize: root.fontSize
-                colBg: root.colBg
-                colFg: root.colFg
-                colMuted: root.colMuted
-                colCyan: root.colCyan
-                colBlue: root.colBlue
-                colLBlue: root.colLightBlue
-                colGreen: root.colGreen
-                colRed: root.colRed
-                colYellow: root.colYellow
+                id: voicerPopup; anchor.window: bar
+                anchor.rect.x: bar.width-width-8; anchor.rect.y: bar.implicitHeight
+                fontFamily: root.fontFamily; fontSize: root.fontSize
+                colBg: root.colBg; colFg: root.colFg; colMuted: root.colMuted
+                colCyan: root.colCyan; colBlue: root.colBlue
+                colLBlue: root.colLightBlue; colGreen: root.colGreen
+                colRed: root.colRed; colYellow: root.colYellow
             }
 
-            component BorderFillRect: Item {
-                id: bfr
-
-                property real value: 0 // 0–100
-                property real radius: 20
-                property string label: ""
-                property int thick: 4 // толщина рамки в px
-                // Анимируем отдельное свойство — Canvas перерисовывается по onAnimValueChanged
-                property real animValue: 0
-                // Цвет по порогам
-                readonly property color fillColor: animValue > 80 ? "#bf616a" : animValue > 55 ? "#ebcb8b" : "#8fbcbb"
-
-                readonly property int fs: width / 4
-
-                onValueChanged: animValue = Math.max(0, Math.min(100, value))
-                Component.onCompleted: animValue = Math.max(0, Math.min(100, value))
-
-                Canvas {
-                    id: canvas
-
-                    anchors.fill: parent
-                    // Перерисовка при изменении анимированного значения или цвета
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.reset()
-
-                        var t = bfr.thick
-                        // Ограничиваем радиус, чтобы он не схлопнул фигуру
-                        var r = Math.min(bfr.radius, (width - t) / 2, (height - t) / 2)
-                        var w = width - t
-                        var h = height - t
-                        var x = t / 2
-                        var y = t / 2
-
-
-                        // 1. Точный периметр (2 стороны + 2 высоты + окружность)
-                        var perimeter = 2 * (w - 2 * r) + 2 * (h - 2 * r) + (2 * Math.PI * r)
-
-                        // 2. Рассчитываем заполнение строго от 0 до perimeter
-                        var progress = Math.max(0, Math.min(100, bfr.animValue))
-                        var filled = (perimeter * progress) / 400
-
-                        function createRoundedPath(c) {
-                            c.beginPath()
-                            c.moveTo(w / 2, y + h)
-                            c.lineTo(x + r, y + h)
-                            c.arcTo(x, y + h, x, y + h - r, r)
-                            c.lineTo(x, y + r)
-                            c.arcTo(x, y, x + r, y, r)
-                            c.lineTo(x + w - r, y)
-                            c.arcTo(x + w, y, x + w, y + r, r)
-                            c.lineTo(x + w, y + h - r)
-                            c.arcTo(x + w, y + h, x + w - r, y + h, r)
-                            c.closePath()
-                        }
-
-                        // Отрисовка фона
-                        ctx.save()
-                        createRoundedPath(ctx)
-                        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)"
-                        ctx.lineWidth = t
-                        ctx.setLineDash([]) // Убираем пунктир для фона
-                        ctx.stroke()
-                        ctx.restore()
-
-                        // Отрисовка прогресса
-                        if (filled > 0) {
-                            ctx.save()
-                            createRoundedPath(ctx)
-                            ctx.strokeStyle = bfr.fillColor
-                            ctx.lineWidth = t
-                            ctx.lineCap = "round"
-                            // Устанавливаем Dash: [длина закраски, длина пустоты]
-                            // Пустота должна быть не меньше периметра, чтобы не было повторов
-                            ctx.setLineDash([filled, perimeter + 1])
-                            ctx.stroke()
-                            ctx.restore()
-                        }
-                    }
-
-
-                    // Перерисовка при изменении animValue или fillColor
-                    Connections {
-                        function onAnimValueChanged() {
-                            canvas.requestPaint();
-                        }
-
-                        function onFillColorChanged() {
-                            canvas.requestPaint();
-                        }
-
-                        target: bfr
-                    }
-
-                }
-
-                // Текст по центру
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: 0
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        visible: bfr.label !== ""
-                        text: bfr.label
-                        color: bfr.fillColor
-                        font {
-                            pixelSize: fs - 2
-                            family: "Monaspace Krypton Medium"
-                        }
-                    }
-
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: Math.round(bfr.animValue) + "%"
-                        color: bfr.fillColor
-                        visible: true
-                        font {
-                            pixelSize: fs - 6
-                            family: "Monaspace Krypton Medium"
-                            bold: true
-                        }
-                    }
-                }
-
-                Behavior on animValue {
-                    NumberAnimation {
-                        duration: 500
-                        easing.type: Easing.OutCubic
-                    }
-
-                }
-
-            }
-
-            // (Power menu переехал в ControlMenu — Фаза 3)
-
-            // ══════════════════════════════════════════════════════════════
-            // БАР: КОНТЕНТ
-            // ══════════════════════════════════════════════════════════════
             Rectangle {
-                anchors.fill: parent
-                color: root.colBg
+                anchors.fill: parent; color: root.colBg
 
                 RowLayout {
-                    anchors.fill: parent
-                    spacing: 0
+                    anchors.fill: parent; spacing: 0
 
-                    // ── LEFT: Логотип + Часы + Активное окно ─────────────
+                    // ── LEFT ──────────────────────────────────────────────────
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: parent.height
                         color: "transparent"
-
                         RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            spacing: 2
-
-                            // Логотип — открывает Control Centre
+                            anchors.fill: parent; anchors.margins: 6; spacing: 2
                             Text {
                                 text: "✦"
-                                color: controlMouse.containsMouse ? root.colLightBlue : root.colCyan
-                                font.pixelSize: 22
-                                font.family: root.fontFamily
-
+                                color: ctrlMa.containsMouse ? root.colLightBlue : root.colCyan
+                                font.pixelSize: 22; font.family: root.fontFamily
                                 Behavior on color { ColorAnimation { duration: 120 } }
-
                                 MouseArea {
-                                    id: controlMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
+                                    id: ctrlMa; anchors.fill: parent; hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: controlMenu.toggle()
                                 }
                             }
-
-                            // Часы — открывают календарь
                             ColumnLayout {
-                                Layout.preferredHeight: parent.height
-                                spacing: 0
-
+                                Layout.preferredHeight: parent.height; spacing: 0
                                 Text {
                                     text: Qt.formatDateTime(clock.date, "ddd/dd.MM.yy")
-                                    color: clockMouse.containsMouse ? root.colLightBlue : root.colFg
-                                    font.pixelSize: root.fontSize - 4
-                                    font.family: root.fontFamily
-                                    font.bold: true
-                                    Layout.leftMargin: 8
-                                    elide: Text.ElideRight
+                                    color: clockMa.containsMouse ? root.colLightBlue : root.colFg
+                                    font.pixelSize: root.fontSize-4; font.family: root.fontFamily; font.bold: true
+                                    Layout.leftMargin: 8; elide: Text.ElideRight
                                     Behavior on color { ColorAnimation { duration: 120 } }
                                 }
-
                                 Text {
                                     text: Qt.formatDateTime(clock.date, "HH:mm:ss")
-                                    color: clockMouse.containsMouse ? root.colLightBlue : root.colFg
-                                    font.pixelSize: root.fontSize
-                                    font.family: root.fontFamily
-                                    font.bold: true
-                                    Layout.leftMargin: 8
-                                    elide: Text.ElideRight
+                                    color: clockMa.containsMouse ? root.colLightBlue : root.colFg
+                                    font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
+                                    Layout.leftMargin: 8; elide: Text.ElideRight
                                     Behavior on color { ColorAnimation { duration: 120 } }
                                 }
-
                                 MouseArea {
-                                    id: clockMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
+                                    id: clockMa; anchors.fill: parent; hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: calendarPopup.visible = !calendarPopup.visible
                                 }
                             }
-
-                            // Активное окно
                             ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: parent.height
-                                spacing: 0
-
+                                Layout.fillWidth: true; Layout.preferredHeight: parent.height; spacing: 0
                                 Text {
-                                    text: root.activeWindowApp
-                                    Layout.fillWidth: true
+                                    text: root.activeWindowApp; Layout.fillWidth: true
                                     color: root.colBlue
-                                    font.pixelSize: root.fontSize - 4
-                                    font.family: root.fontFamily
-                                    font.bold: true
-                                    Layout.leftMargin: 8
-                                    elide: Text.ElideRight
+                                    font.pixelSize: root.fontSize-4; font.family: root.fontFamily; font.bold: true
+                                    Layout.leftMargin: 8; elide: Text.ElideRight
                                 }
-
                                 Text {
-                                    text: root.activeWindow
-                                    Layout.fillWidth: true
+                                    text: root.activeWindow; Layout.fillWidth: true
                                     color: root.colLightBlue
-                                    font.pixelSize: root.fontSize
-                                    font.family: root.fontFamily
-                                    font.bold: true
-                                    Layout.leftMargin: 8
-                                    elide: Text.ElideRight
+                                    font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
+                                    Layout.leftMargin: 8; elide: Text.ElideRight
                                 }
                             }
                         }
                     }
 
-                    // ── CENTER: Воркспейсы ────────────────────────────────
+                    // ── CENTER: Workspaces ─────────────────────────────────────
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredHeight: parent.height
-                        Layout.preferredWidth: 260
+                        Layout.preferredWidth: 270
                         color: "transparent"
-
-                        RowLayout {
+                        Workspaces {
                             anchors.centerIn: parent
-
-                            Workspaces {
-                                fontFamily: root.fontFamily
-                                fontSize:   root.fontSize
-                                colActive:  root.colLightBlue
-                                colOccupied: root.colFg
-                                colEmpty:   root.colMuted
-                                colBar:     root.colBlue
-                                colBg:      root.colBg
-                            }
+                            screenName:   bar.screen ? bar.screen.name : ""
+                            niriInstance: niri
+                            fontFamily:   root.fontFamily; fontSize:    root.fontSize
+                            colActive:    root.colLightBlue; colOccupied: root.colFg
+                            colEmpty:     root.colMuted;     colBar:      root.colBlue
+                            colBg:        root.colBg;        colSurface:  root.colSurface
+                            colMuted:     root.colMuted
                         }
                     }
 
-                    // ── RIGHT: Метрики + Трей + Контролы ─────────────────
+                    // ── RIGHT ─────────────────────────────────────────────────
                     Rectangle {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignRight
-                        Layout.preferredHeight: parent.height - 6
-                        color: "transparent"
+                        Layout.fillWidth: true; Layout.alignment: Qt.AlignRight
+                        Layout.preferredHeight: parent.height-6; color: "transparent"
 
                         RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            spacing: 10
-
+                            anchors.fill: parent; anchors.margins: 4; spacing: 10
                             Item { Layout.fillWidth: true }
 
-                            // ── Battery (только если есть) ────────────────
+                            // Battery
                             Text {
-                                id: batteryLabel
                                 readonly property UPowerDevice bat: UPower.displayDevice
-
                                 visible: bat.isLaptopBattery
                                 text: {
                                     if (!bat.isLaptopBattery) return ""
-                                    var p = Math.round(bat.percentage * 100)
+                                    var p = Math.round(bat.percentage*100)
                                     var s = bat.state
-                                    if (s === UPowerDeviceState.Charging) {
-                                        if (p > 80) return "󰂊 " + p + "%"
-                                        if (p > 60) return "󰂉 " + p + "%"
-                                        if (p > 40) return "󰂈 " + p + "%"
-                                        if (p > 20) return "󰂆 " + p + "%"
-                                        return "󰢜 " + p + "%"
-                                    }
-                                    if (s === UPowerDeviceState.FullyCharged) return "󰁹 " + p + "%"
-                                    if (p > 80) return "󰂀 " + p + "%"
-                                    if (p > 60) return "󰁿 " + p + "%"
-                                    if (p > 40) return "󰁾 " + p + "%"
-                                    if (p > 20) return "󰁽 " + p + "%"
-                                    return "󰁻 " + p + "%"
+                                    if (s===UPowerDeviceState.Charging)
+                                        return (p>80?"󰂊":p>60?"󰂉":p>40?"󰂈":p>20?"󰂆":"󰢜")+" "+p+"%"
+                                    if (s===UPowerDeviceState.FullyCharged) return "󰁹 "+p+"%"
+                                    return (p>80?"󰂀":p>60?"󰁿":p>40?"󰁾":p>20?"󰁽":"󰁻")+" "+p+"%"
                                 }
-                                color: bat.percentage <= 0.15 ? root.colRed
-                                     : bat.percentage <= 0.40 ? root.colYellow
-                                     : root.colGreen
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
+                                color: bat.percentage<=0.15 ? root.colRed
+                                     : bat.percentage<=0.40 ? root.colYellow : root.colGreen
+                                font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
                             }
 
-                            // (SystemTray перенесён в ControlMenu → вкладка Main)
-
-                            // ── Wi-Fi ─────────────────────────────────────
+                            // Network
                             Text {
-                                text: {
-                                    if (!root.networkConnected) return "󰖪 Disconnected"
-                                    if (root.networkType === "ethernet") return "󰛳 " + root.networkIP
-                                    return "󰖩 " + root.networkSSID
-                                }
+                                text: !root.networkConnected ? "󰖪 Disconnected"
+                                    : root.networkType==="ethernet" ? "󰛳 "+root.networkIP
+                                    : "󰖩 "+root.networkSSID
                                 color: root.networkConnected ? root.colCyan : root.colRed
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
-
+                                font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
                                 MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: wifiPopup.visible = !wifiPopup.visible
                                 }
                             }
 
-                            // ── CPU ───────────────────────────────────────
-                            BorderFillRect {
-                                width: 60
-                                height: 35
-                                radius: 30
-                                value: root.cpuUsage
-                                label: "CPU"
-                            }
+                            BorderFillRect { width:60; height:35; radius:30; value: root.cpuUsage; label:"CPU" }
+                            BorderFillRect { width:60; height:35; radius:30; value: root.memUsage; label:"RAM" }
+                            BorderFillRect { width:60; height:35; radius:30; value: root.gpuUsage; label:"GPU" }
 
-                            // ── RAM ───────────────────────────────────────
-                            BorderFillRect {
-                                width: 60
-                                height: 35
-                                radius: 30
-                                value: root.memUsage
-                                label: "RAM"
-                            }
-
-                            // ── GPU ───────────────────────────────────────
-                            BorderFillRect {
-                                width: 60
-                                height: 35
-                                radius: 30
-                                value: root.gpuUsage
-                                label: "GPU"
-                            }
-
-                            // ── Volume ────────────────────────────────────
+                            // Volume
                             Item {
-                                id: volWidget
-                                implicitWidth:  volLabel.implicitWidth
-                                implicitHeight: volLabel.implicitHeight
-
+                                implicitWidth: volTxt.implicitWidth; implicitHeight: volTxt.implicitHeight
                                 Text {
-                                    id: volLabel
-                                    text: {
-                                        var icon = volume.level === 0 ? "󰝟"
-                                                 : volume.level < 50  ? "󰖀"
-                                                 : "󰕾"
-                                        return icon + " " + volume.level + "%"
-                                    }
-                                    color: volume.level > 90 ? root.colRed
-                                         : volume.level > 50 ? root.colYellow
-                                         : root.colCyan
-                                    font.pixelSize: root.fontSize
-                                    font.family: root.fontFamily
-                                    font.bold: true
+                                    id: volTxt
+                                    text: (volume.level===0?"󰝟":volume.level<50?"󰖀":"󰕾")+" "+volume.level+"%"
+                                    color: volume.level>90?root.colRed:volume.level>50?root.colYellow:root.colCyan
+                                    font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
                                 }
-
                                 MouseArea {
-                                    id: volHover
-                                    anchors.fill: parent
-                                    hoverEnabled: true
+                                    id: volHover; anchors.fill: parent; hoverEnabled: true
                                     acceptedButtons: Qt.NoButton
-                                    onEntered: {
-                                        soundPopup.visible    = true
-                                        soundPopup.barHovered = true
-                                    }
-                                    onExited: {
-                                        soundPopup.barHovered = false
-                                    }
-                                    onWheel: event => {
-                                        if (event.angleDelta.y > 0)
-                                            volume.level = Math.min(100, volume.level + 5)
-                                        else
-                                            volume.level = Math.max(0, volume.level - 5)
-                                        event.accepted = true
+                                    onEntered: { soundPopup.visible=true; soundPopup.barHovered=true }
+                                    onExited:  { soundPopup.barHovered=false }
+                                    onWheel: ev => {
+                                        volume.level = ev.angleDelta.y>0
+                                            ? Math.min(100,volume.level+5)
+                                            : Math.max(0,volume.level-5)
+                                        ev.accepted=true
                                     }
                                 }
                             }
 
-                            // ── Клавиатура ────────────────────────────────
+                            // Keyboard layout — переключение через sendRawAction
                             Text {
-                                text: "󰌌 " + root.keyboardLayout
+                                text: "󰌌 "+root.keyboardLayout
                                 color: root.colCyan
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
+                                font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: niri.sendRawAction({ "SwitchLayout": { "layout": "Next" } })
+                                }
                             }
 
-                            // ── Voice Changer ─────────────────────────────
+                            // Voice Changer
                             Text {
-                                text: VoiceChangerService.vcRtActive ? "󰍬"
-                                    : VoiceChangerService.vcBusy     ? "󰔟"
-                                    : VoiceChangerService.vcLoaded   ? "󰍬"
-                                    : "󰍭"
-                                color: VoiceChangerService.vcRtActive ? root.colGreen
-                                     : VoiceChangerService.vcBusy     ? root.colYellow
-                                     : VoiceChangerService.vcLoaded   ? root.colCyan
-                                     : root.colMuted
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
-
+                                text: VoiceChangerService.vcRtActive?"󰍬":VoiceChangerService.vcBusy?"󰔟":VoiceChangerService.vcLoaded?"󰍬":"󰍭"
+                                color: VoiceChangerService.vcRtActive?root.colGreen:VoiceChangerService.vcBusy?root.colYellow:VoiceChangerService.vcLoaded?root.colCyan:root.colMuted
+                                font.pixelSize: root.fontSize; font.family: root.fontFamily; font.bold: true
                                 MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: voicerPopup.visible = !voicerPopup.visible
                                 }
                             }
 
-                            // ── Power — мини-меню быстрых действий ────────
+                            // Power menu
                             Item {
-                                id: powerBtnItem
-                                implicitWidth:  powerTxt.implicitWidth
-                                implicitHeight: powerTxt.implicitHeight
-
+                                implicitWidth: pwrTxt.implicitWidth; implicitHeight: pwrTxt.implicitHeight
                                 Text {
-                                    id: powerTxt
-                                    text: "⏻"
-                                    color: powerMouse.containsMouse ? root.colRed : Qt.rgba(0.75, 0.38, 0.41, 0.7)
-                                    font.pixelSize: root.fontSize + 2
-                                    font.family: root.fontFamily
+                                    id: pwrTxt; text: "⏻"
+                                    color: pwrMa.containsMouse ? root.colRed : Qt.rgba(0.75,0.38,0.41,0.7)
+                                    font.pixelSize: root.fontSize+2; font.family: root.fontFamily
                                     Behavior on color { ColorAnimation { duration: 100 } }
                                 }
-
                                 MouseArea {
-                                    id: powerMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
+                                    id: pwrMa; anchors.fill: parent; hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: miniPowerMenu.visible = !miniPowerMenu.visible
                                 }
 
-                                // Мини-попап питания
                                 PopupWindow {
-                                    id: miniPowerMenu
-                                    visible: false
+                                    id: miniPowerMenu; visible: false
                                     anchor.window: bar
-                                    anchor.rect.x: bar.width - width - 4
-                                    anchor.rect.y: bar.implicitHeight
-                                    width: 130
-                                    height: powerMenuCol.implicitHeight + 8
-                                    color: "transparent"
+                                    anchor.rect.x: bar.width-width-4; anchor.rect.y: bar.implicitHeight
+                                    width: 130; height: pwrCol.implicitHeight+8; color: "transparent"
 
                                     Rectangle {
-                                        anchors.fill: parent
-                                        color: root.colBg
-                                        border.color: root.colMuted
-                                        border.width: 1
+                                        anchors.fill: parent; color: root.colBg
+                                        border.color: root.colMuted; border.width: 1
 
                                         Column {
-                                            id: powerMenuCol
-                                                                                        anchors {
-                                                left: parent.left
-                                                right: parent.right
-                                                top: parent.top
-                                            }
-                                            anchors.margins: 4
-                                            anchors.topMargin: 4
-                                            spacing: 2
+                                            id: pwrCol
+                                            anchors { left: parent.left; right: parent.right; top: parent.top }
+                                            anchors.margins: 4; anchors.topMargin: 4; spacing: 2
 
                                             Repeater {
                                                 model: [
-                                                    { icon: "󰍁", label: "Lock",      cmd: ["loginctl", "lock-session"],    danger: false },
-                                                    { icon: "󰤄", label: "Suspend",   cmd: ["systemctl", "suspend"],        danger: false },
-                                                    { icon: "󰒲", label: "Hibernate", cmd: ["systemctl", "hibernate"],      danger: false },
-                                                    { icon: "󰈆", label: "Logout",    cmd: ["hyprctl", "dispatch", "exit"], danger: true  },
-                                                    { icon: "󰜉", label: "Reboot",    cmd: ["systemctl", "reboot"],         danger: true  },
-                                                    { icon: "󰐥", label: "Shutdown",  cmd: ["systemctl", "poweroff"],       danger: true  }
+                                                    { icon:"󰍁", label:"Lock",
+                                                      fn: ()=>Quickshell.execDetached(["loginctl","lock-session"]), danger:false },
+                                                    { icon:"󰤄", label:"Suspend",
+                                                      fn: ()=>Quickshell.execDetached(["systemctl","suspend"]), danger:false },
+                                                    { icon:"󰒲", label:"Hibernate",
+                                                      fn: ()=>Quickshell.execDetached(["systemctl","hibernate"]), danger:false },
+                                                    { icon:"󰈆", label:"Logout",
+                                                      fn: ()=>niri.sendRawAction({"Quit":{"skip_confirmation":true}}), danger:true },
+                                                    { icon:"󰜉", label:"Reboot",
+                                                      fn: ()=>Quickshell.execDetached(["systemctl","reboot"]), danger:true },
+                                                    { icon:"󰐥", label:"Shutdown",
+                                                      fn: ()=>Quickshell.execDetached(["systemctl","poweroff"]), danger:true }
                                                 ]
-
                                                 Rectangle {
-                                                    width: powerMenuCol.width
-                                                    height: 28
-                                                    color: pwrItemMa.containsMouse
-                                                        ? (modelData.danger ? Qt.rgba(0.75,0.38,0.41,0.2) : Qt.rgba(1,1,1,0.06))
+                                                    width: pwrCol.width; height: 28
+                                                    color: pma.containsMouse
+                                                        ? (modelData.danger?Qt.rgba(0.75,0.38,0.41,0.2):Qt.rgba(1,1,1,0.06))
                                                         : "transparent"
                                                     Behavior on color { ColorAnimation { duration: 60 } }
-
                                                     RowLayout {
                                                         anchors.fill: parent
-                                                        anchors.leftMargin: 8
-                                                        anchors.rightMargin: 8
-                                                        spacing: 6
-
-                                                        Text {
-                                                            text: modelData.icon
-                                                                                                                        font {
-                                                                pixelSize: root.fontSize - 1
-                                                                family: root.fontFamily
-                                                            }
-                                                            color: modelData.danger ? root.colRed : root.colFg
-                                                        }
-                                                        Text {
-                                                            text: modelData.label
-                                                                                                                        font {
-                                                                pixelSize: root.fontSize - 3
-                                                                family: root.fontFamily
-                                                            }
-                                                            color: modelData.danger ? root.colRed : root.colFg
-                                                            Layout.fillWidth: true
-                                                        }
+                                                        anchors.leftMargin: 8; anchors.rightMargin: 8; spacing: 6
+                                                        Text { text: modelData.icon; color: modelData.danger?root.colRed:root.colFg
+                                                               font { pixelSize: root.fontSize-1; family: root.fontFamily } }
+                                                        Text { text: modelData.label; Layout.fillWidth: true
+                                                               color: modelData.danger?root.colRed:root.colFg
+                                                               font { pixelSize: root.fontSize-3; family: root.fontFamily } }
                                                     }
-
                                                     MouseArea {
-                                                        id: pwrItemMa
-                                                        anchors.fill: parent
-                                                        hoverEnabled: true
+                                                        id: pma; anchors.fill: parent; hoverEnabled: true
                                                         cursorShape: Qt.PointingHandCursor
-                                                        onClicked: {
-                                                            miniPowerMenu.visible = false
-                                                            Qt.callLater(() => Quickshell.execDetached(modelData.cmd))
-                                                        }
+                                                        onClicked: { miniPowerMenu.visible=false; Qt.callLater(modelData.fn) }
                                                     }
                                                 }
                                             }
@@ -1012,5 +908,4 @@ ShellRoot {
             }
         }
     }
-
 }

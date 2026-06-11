@@ -92,11 +92,8 @@ layout {
 prefer-no-csd
 
 environment {
-    // Cursor
-    HYPRCURSOR_THEME "Nordzy-hyprcursors"
-    HYPRCURSOR_SIZE "30"
     XCURSOR_THEME "Nordzy-cursors"
-    XCURSOR_SIZE "30"
+    XCURSOR_SIZE "20"
     no_hardware_cursors "1"
 
     // Hyprland
@@ -114,9 +111,11 @@ environment {
     __GL_VRR_ALLOWED "0"
     __GL_GSYNC_ALLOWED "1"
     LIBVA_DRIVER_NAME "nvidia"
+    NVD_BACKEND "direct"
+    MOZ_DISABLE_RDD_SANDBOX "1"
 
     // GTK
-    GDK_BACKEND "wayland,x11"
+    GDK_BACKEND "wayland"
     GTK_THEME "Nordic-darker"
 
     // XDG
@@ -257,7 +256,7 @@ binds {
     // ── Apps ──────────────────────────────────────────────────────────────
     Mod+Q { spawn "ghostty"; }
     Mod+C { close-window; }
-    Mod+Shift+C { close-window; }   // niri has no force-close; same action
+    Mod+Shift+C { spawn "sh" "-c" "pkill -9 $(niri msg pick-window | grep 'app-id:' | awk -F'\"' '{print $2}')"; }
     Mod+E { spawn "nemo"; }
 
     // App launcher (rofi combi)

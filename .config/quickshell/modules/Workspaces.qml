@@ -1,340 +1,174 @@
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-
-// ── Workspaces widget ─────────────────────────────────────────────────────────
-// Auto-detects running WM: Hyprland or i3
-// Usage: Workspaces {
-//     fontFamily: ...
-//     fontSize: ...
-//     colActive: ...
-//     ...
-// }
-// ─────────────────────────────────────────────────────────────────────────────
+import Niri 0.1
 
 Item {
     id: workspacesRoot
 
-    // ── Theming props (pass from parent) ──────────────────────────────────────
-    property string fontFamily: "Monaspace Krypton Medium"
-    property int fontSize: 16
-    property color colActive: "#81a1c1"
-    property color colOccupied: "#d8dee9"
-    property color colEmpty: "#4c566a"
-    property color colBar: "#5e81ac"
-    property color colBg: "#2e3440"
+    property string fontFamily:  "Monaspace Krypton Medium"
+    property int    fontSize:    16
+    property color  colActive:   "#81a1c1"
+    property color  colOccupied: "#d8dee9"
+    property color  colEmpty:    "#4c566a"
+    property color  colBar:      "#5e81ac"
+    property color  colBg:       "#2e3440"
+    property color  colSurface:  "#3b4252"
+    property color  colMuted:    "#4c566a"
 
-    implicitWidth: 250
+    property string screenName:   ""
+    property var    niriInstance: null
+
+    implicitWidth:  260
     implicitHeight: 50
-
     Layout.fillHeight: true
-    Layout.fillWidth: false
-    Layout.preferredWidth: 250
+    Layout.preferredWidth: 260
     Layout.alignment: Qt.AlignVCenter
 
-    // ── wsId → windowClass map, обновляется через hyprctl ────────────────────
-    property var wsClassMap: ({})
-
-    Process {
-        id: clientsProc
-        command: ["sh", "-c", "hyprctl clients -j | jq -r '.[] | \"\\(.workspace.id) \\(.class)\"'"]
-        running: true
-
-        stdout: SplitParser {
-            onRead: (data) => {
-                if (!data || !data.trim()) return;
-                const parts = data.trim().split(" ");
-                if (parts.length >= 2) {
-                    const map = workspacesRoot.wsClassMap;
-                    // Только первое окно на workspace
-                    if (!map[parts[0]]) {
-                        map[parts[0]] = parts.slice(1).join(" ").toLowerCase();
-                        workspacesRoot.wsClassMap = Object.assign({}, map);
-                    }
-                }
-            }
-        }
-    }
-
-    // Перезапускаем при смене активного окна
-    Connections {
-        target: Hyprland
-        function onActiveToplevelChanged() {
-            workspacesRoot.wsClassMap = {};
-            clientsProc.running = false;
-            clientsProc.running = true;
-        }
-    }
-
-    // ── App icon mapping (windowClass → Nerd Font icon) ───────────────────────
     readonly property var appIcons: ({
-        "steam":            "󰓓",
-        "telegram":         "",
-        "discord":          "",
-        "vesktop":          "󰙯",
-        "firefox":          "󰈹",
-        "chromium":         "",
-        "google-chrome":    "",
-        "brave":            "󰖟",
-        "code":             "󰨞",
-        "jetbrains":        "",
-        "pycharm":          "",
-        "idea":             "",
-        "clion":            "",
-        "tty":              "",
-        "foot":             "",
-        "wezterm":          "",
-        "konsole":          "",
-        "thunar":           "󰉋",
-        "nautilus":         "󰉋",
-        "nemo":             "󰉋",
-        "dolphin":          "󰉋",
-        "spotify":          "󰓇",
-        "mpv":              "",
-        "vlc":              "󰕼",
-        "obs":              "󰐌",
-        "gimp":             "",
-        "inkscape":         "",
-        "blender":          "󰂫",
-        "krita":            "",
-        "figma":            "",
-        "slack":            "󰒱",
-        "zoom":             "󰍫",
-        "thunderbird":      "󰇮",
-        "libreoffice":      "󰈙",
-        "soffice":          "󰈙",
-        "postman":          "󰛮",
-        "insomnia":         "󰛮",
-        "docker":           "󰡨",
-        "virtualbox":       "󰡨",
-        "lutris":           "󰺵",
-        "heroic":           "󰺵",
-        "minecraft":        "󰍳",
-        "github":           "󰊤",
-        "obsidian":         "󱓩",
-        "torrent":          "󰇚",
-        "prusa":            "",
-        "orca":             "",
+        "steam":"󰓓","telegram-desktop":"","org.telegram.desktop":"",
+        "discord":"","vesktop":"󰙯","firefox":"󰈹","chromium":"",
+        "google-chrome":"","brave-browser":"󰖟","code":"󰨞","code-oss":"󰨞",
+        "pycharm":"","idea":"","clion":"","foot":"","ghostty":"",
+        "org.wezfurlong.wezterm":"","kitty":"","konsole":"",
+        "thunar":"󰉋","org.gnome.nautilus":"󰉋","nemo":"󰉋","dolphin":"󰉋",
+        "spotify":"󰓇","mpv":"","vlc":"󰕼","com.obsproject.studio":"󰐌",
+        "gimp":"","inkscape":"","blender":"󰂫","krita":"","slack":"󰒱",
+        "zoom":"󰍫","thunderbird":"󰇮","libreoffice-writer":"󰈙",
+        "virtualbox":"󰡨","obsidian":"󱓩","prusa-slicer":"",
     })
 
-    // ── Resolve icon by wsId ──────────────────────────────────────────────────
-    function getWorkspaceIcon(wsId) {
-        const cls = wsClassMap[wsId.toString()];
-        if (!cls) return "";
-        if (appIcons[cls]) return appIcons[cls];
-        for (const key in appIcons) {
-            if (cls.includes(key)) return appIcons[key];
-        }
-        return "";
+    // hasWindows — проверяем через activeWindowId воркспейса
+    // (workspaceModel не итерируется в JS, windows тоже)
+    // Используем isActive как прокси — если воркспейс active (не просто focused),
+    // значит на нём есть контекст. Для hasWindows используем model.activeWindowId.
+    function wsHasWindows(wsModel) {
+        // activeWindowId > 0 означает что на воркспейсе есть активное окно
+        return (wsModel.activeWindowId ?? 0) > 0
     }
 
-    // ── Loader: pick correct implementation ───────────────────────────────────
-    Loader {
-        id: wsLoader
-        anchors.fill: parent
-        sourceComponent: {
-            if (WMDetector.isHyprland) return hyprlandWS;
-            if (WMDetector.isI3)       return i3WS;
-            return hyprlandWS;
-        }
-    }
+    Item {
+        width: 260
+        height: 50
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // Hyprland implementation
-    // ══════════════════════════════════════════════════════════════════════════
-    Component {
-        id: hyprlandWS
+        ScrollView {
+            id: wsRow
+            anchors.fill: parent
+            contentWidth: wsRowLayout.implicitWidth
+            contentHeight: height
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical.policy:   ScrollBar.AlwaysOff
+            clip: true
 
-        Item {
-            width: 250
-            height: 50
-            implicitWidth: 250
-            implicitHeight: 50
+            RowLayout {
+                id: wsRowLayout
+                height: parent.height
+                spacing: 2
 
-            ScrollView {
-                id: wsRow
-                anchors.fill: parent
-                contentWidth: wsRowLayout.implicitWidth
-                contentHeight: height
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
-                clip: true
+                Repeater {
+                    // WorkspaceModel поддерживает Repeater напрямую
+                    model: niriInstance ? niriInstance.workspaces : null
 
-                RowLayout {
-                    id: wsRowLayout
-                    height: parent.height
-                    spacing: 2
-                    Layout.leftMargin: 2
-                    Layout.rightMargin: 2
+                    delegate: Rectangle {
+                        id: wsItem
 
-                    Repeater {
-                        readonly property int maxOccupied: {
-                            let max = 0;
-                            const ws = Hyprland.workspaces.values;
-                            for (let i = 0; i < ws.length; i++) {
-                                if (ws[i].id > max) max = ws[i].id;
-                            }
-                            return max;
+                        // Фильтрация по монитору через visible + нулевой размер
+                        readonly property bool matchesScreen:
+                            workspacesRoot.screenName === "" ||
+                            (model.output ?? "").toLowerCase() === workspacesRoot.screenName.toLowerCase()
+
+                        readonly property bool isActive:   model.isFocused   ?? false
+                        readonly property bool hasWindows: (model.activeWindowId ?? 0) > 0
+
+                        visible:                matchesScreen
+                        Layout.preferredHeight: matchesScreen ? 30 : 0
+                        Layout.preferredWidth:  matchesScreen ? (isActive ? 60 : 30) : 0
+
+                        color: "transparent"
+                        clip:  true
+
+                        Behavior on Layout.preferredWidth {
+                            NumberAnimation { duration: 300; easing.type: Easing.InOutCubic }
                         }
-                        readonly property int maxModel: Math.max(maxOccupied, Hyprland.focusedWorkspace?.id ?? 0)
-                        model: maxModel
+
+                        onIsActiveChanged: {
+                            if (isActive && matchesScreen) {
+                                var center = x + width / 2
+                                var target = center - wsRow.width / 2
+                                var clamped = Math.max(0, Math.min(target,
+                                    wsRow.contentItem.contentWidth - wsRow.width))
+                                scrollAnim.to = clamped
+                                scrollAnim.start()
+                            }
+                        }
 
                         Rectangle {
-                            id: wsItem
-                            Layout.preferredHeight: 30
-                            Layout.preferredWidth: shouldShow ? 30 : 0
-                            color: "transparent"
+                            height: 30
+                            width: wsItem.isActive ? 60 : 30
+                            anchors.centerIn: parent
+                            radius: 20
+                            color: wsItem.isActive ? workspacesRoot.colBar : workspacesRoot.colSurface
+                            Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutCubic } }
+                            Behavior on color { ColorAnimation { duration: 300 } }
+                        }
 
-                            readonly property int wsId: index + 1
-                            readonly property var workspace: Hyprland.workspaces.values.find(ws => ws.id === wsId) ?? null
-                            readonly property bool isActive: Hyprland.focusedWorkspace?.id === wsId
-                            readonly property bool hasWindows: workspace !== null
-                            readonly property bool shouldShow: hasWindows || isActive || wsId === parent.maxModel
-
-                            visible: shouldShow
-
-                            onIsActiveChanged: {
-                                if (isActive) {
-                                    var itemCenter = x + width / 2;
-                                    var targetX = itemCenter - wsRow.width / 2;
-                                    var clamped = Math.max(0, Math.min(targetX, wsRow.contentItem.contentWidth - wsRow.width));
-                                    scrollAnim.to = clamped;
-                                    scrollAnim.start();
-                                }
+                        Text {
+                            readonly property bool hasIcon: false  // иконки без .get() недоступны — отключено
+                            readonly property string label: {
+                                var name = model.name ?? ""
+                                return name.length > 0 ? name : model.index.toString()
                             }
 
-                            states: [
-                                State {
-                                    name: "active"
-                                    when: wsItem.isActive
-                                    PropertyChanges {
-                                        target: wsItem
-                                        Layout.leftMargin: 18
-                                        Layout.rightMargin: 18
-                                    }
-                                    PropertyChanges {
-                                        target: innerRect
-                                        width: 60
-                                        color: colBar
-                                    }
-                                },
-                                State {
-                                    name: "inactive"
-                                    when: !wsItem.isActive
-                                    PropertyChanges {
-                                        target: wsItem
-                                        Layout.leftMargin: 0.5
-                                        Layout.rightMargin: 0.5
-                                    }
-                                    PropertyChanges {
-                                        target: innerRect
-                                        width: 30
-                                        color: colSurface
-                                    }
-                                }
-                            ]
+                            text: label
+                            color: wsItem.isActive   ? workspacesRoot.colBg
+                                 : wsItem.hasWindows ? workspacesRoot.colOccupied
+                                 : workspacesRoot.colEmpty
+                            font.pixelSize: workspacesRoot.fontSize
+                            font.family: workspacesRoot.fontFamily
+                            font.bold: true
+                            anchors.centerIn: parent
+                        }
 
-                            transitions: Transition {
-                                NumberAnimation {
-                                    properties: "Layout.leftMargin, Layout.rightMargin, width"
-                                    duration: 300
-                                    easing.type: Easing.InOutCubic
-                                }
-                                ColorAnimation {
-                                    duration: 300
-                                    easing.type: Easing.InOutCubic
-                                }
-                            }
-
-                            Rectangle {
-                                id: innerRect
-                                height: 30
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.verticalCenter: parent.verticalCenter
-                                radius:20
-                            }
-
-                            Text {
-                                id: wsLabel
-                                readonly property string icon: {
-                                    // реактивная зависимость на wsClassMap
-                                    const _dep = workspacesRoot.wsClassMap;
-                                    return workspacesRoot.getWorkspaceIcon(parent.wsId);
-                                }
-                                readonly property bool hasIcon: icon !== ""
-
-                                text: hasIcon ? icon : parent.wsId.toString()
-                                color: parent.isActive ? colBg : parent.hasWindows ? colMuted : colEmpty
-                                font.pixelSize: fontSize
-                                font.family: hasIcon ? "Symbols Nerd Font Mono" : fontFamily
-                                font.bold: !hasIcon
-                                anchors.centerIn: parent
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: Hyprland.dispatch("workspace " + parent.wsId)
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                if (niriInstance)
+                                    niriInstance.focusWorkspaceById(model.id)
                             }
                         }
                     }
-                } // RowLayout
-
-                NumberAnimation {
-                    id: scrollAnim
-                    target: wsRow.contentItem
-                    property: "contentX"
-                    duration: 800
-                    easing.type: Easing.InOutBack
-                }
-            } // ScrollView
-
-            // Затемнение левого края
-            Rectangle {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 32
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                                        GradientStop {
-                        position: 0.0
-                        color: colBg
-                    }
-                                        GradientStop {
-                        position: 0.5
-                        color: "transparent"
-                    }
                 }
             }
 
-            // Затемнение правого края
-            Rectangle {
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 32
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                                        GradientStop {
-                        position: 0.0
-                        color: "transparent"
-                    }
-                                        GradientStop {
-                        position: 1.3
-                        color: colBg
-                    }
-                }
+            NumberAnimation {
+                id: scrollAnim
+                target: wsRow.contentItem
+                property: "contentX"
+                duration: 800
+                easing.type: Easing.InOutBack
             }
-        } // Item
-    }
+        }
 
+        Rectangle {
+            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+            width: 32
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: workspacesRoot.colBg }
+                GradientStop { position: 0.6; color: "transparent" }
+            }
+        }
 
-
-    Component.onCompleted: {
-        console.log("WMDetector.name =", WMDetector.name);
-        console.log("WMDetector.isI3 =", WMDetector.isI3);
+        Rectangle {
+            anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+            width: 32
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 1.0; color: workspacesRoot.colBg }
+            }
+        }
     }
 }

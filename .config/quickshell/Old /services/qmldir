@@ -1,5 +1,0 @@
-module services
-
-singleton VoiceChangerService 1.0 VoiceChangerService.qml
-Weather 1.0 Weather.qml
-WallpaperService 1.0 WallpaperService.qml
