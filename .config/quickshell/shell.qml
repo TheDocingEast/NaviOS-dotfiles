@@ -238,6 +238,8 @@ ShellRoot {
         property int  slotIndex:    0
         property int  autoCloseMs:  4500
         property bool popupVisible: false
+        property bool replyVisible: false
+        onReplyVisibleChanged: if (replyVisible) Qt.callLater(function() { if (replyInput) replyInput.forceActiveFocus() })
 
         implicitHeight: cardLayout.implicitHeight + 20
         color: service ? Qt.rgba(
@@ -262,16 +264,13 @@ ShellRoot {
             duration: 160; easing.type: Easing.OutCubic
         }
 
-        // ── Автозакрытие ──────────────────────────────────────────────────
+        // ── Автозакрытие (таймер на уровне сервиса, не во вьюхе) ────────
+        // cardAutoTimer используется только для прогресс-бара.
         Timer {
             id: cardAutoTimer
             interval: cardRoot.autoCloseMs
             running: cardRoot.popupVisible && cardRoot.notif !== null
             repeat: false
-            onTriggered: {
-                if (cardRoot.notif) cardRoot.notif.expire()
-                if (cardRoot.service) cardRoot.service.dismissSlot(cardRoot.slotIndex)
-            }
         }
 
         // ── Прогресс-бар таймера ──────────────────────────────────────────
@@ -284,13 +283,43 @@ ShellRoot {
         }
         onPopupVisibleChanged: if (!popupVisible) timerElapsed = 0
 
-        // Hover — пауза таймера
+        // ── Reply action ───────────────────────────────────────────────
+        function _sendReply(text) {
+            if (!cardRoot.notif) return
+            var replyId = null
+            var acts = cardRoot.notif.actions
+            if (acts) {
+                for (var i = 0; i < acts.length; i++) {
+                    var id = acts[i].identifier
+                    if (id === "mailReply" || id === "Reply" || id === "reply" || id === "INLINE_REPLY") {
+                        replyId = id
+                        break
+                    }
+                }
+            }
+            if (replyId)
+                cardRoot.notif.sendActionInvoked(replyId)
+            if (cardRoot.service)
+                cardRoot.service.dismissSlot(cardRoot.slotIndex)
+            cardRoot.replyVisible = false
+        }
+
+        // Hover — пауза таймера сервиса
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.NoButton
-            onEntered: cardAutoTimer.running = false
-            onExited:  cardAutoTimer.running = cardRoot.popupVisible && cardRoot.notif !== null
+            onEntered: {
+                cardAutoTimer.running = false
+                if (cardRoot.service)
+                    cardRoot.service._slotTimer(cardRoot.slotIndex).running = false
+            }
+            onExited: {
+                var shouldRun = cardRoot.popupVisible && cardRoot.notif !== null
+                cardAutoTimer.running = shouldRun
+                if (cardRoot.service)
+                    cardRoot.service._slotTimer(cardRoot.slotIndex).running = shouldRun
+            }
             z: -1
         }
 
@@ -356,19 +385,22 @@ ShellRoot {
                 }
 
                 // Закрыть
-                Text {
-                    text: "✕"
-                    font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 4 : 12
-                    font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
-                    color: cardCloseMa.containsMouse
-                        ? (cardRoot.service ? cardRoot.service.colFg : "#d8dee9")
-                        : (cardRoot.service ? cardRoot.service.colMuted : "#4c566a")
+                Item {
+                    width: 20; height: 20
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 4 : 12
+                        font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                        color: closeMa.containsMouse
+                            ? (cardRoot.service ? cardRoot.service.colFg : "#d8dee9")
+                            : (cardRoot.service ? cardRoot.service.colMuted : "#4c566a")
+                    }
                     MouseArea {
-                        id: cardCloseMa
+                        id: closeMa
                         anchors.fill: parent; hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            cardAutoTimer.stop()
                             if (cardRoot.notif) cardRoot.notif.dismiss()
                             if (cardRoot.service) cardRoot.service.dismissSlot(cardRoot.slotIndex)
                         }
@@ -390,7 +422,7 @@ ShellRoot {
                 elide: Text.ElideRight
             }
 
-            // ── Действия ─────────────────────────────────────────────────
+            // ── Действия (от приложения) ──────────────────────────────────
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 4
@@ -424,10 +456,131 @@ ShellRoot {
                             anchors.fill: parent; hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                cardAutoTimer.stop()
                                 if (cardRoot.notif)
                                     cardRoot.notif.sendActionInvoked(modelData.identifier)
                                 if (cardRoot.service) cardRoot.service.dismissSlot(cardRoot.slotIndex)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Messenger quick actions ──────────────────────────────────
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                // Mark as read
+                Item {
+                    Layout.fillWidth: true; height: 22
+                    Rectangle {
+                        anchors.fill: parent
+                        color: markReadMa.containsMouse
+                            ? Qt.rgba(0.56, 0.75, 0.63, 0.20)
+                            : Qt.rgba(0.56, 0.75, 0.63, 0.06)
+                        border.color: cardRoot.service ? cardRoot.service.colGreen : "#a3be8c"
+                        border.width: 1
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "󰄳 Mark as read"
+                        font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 5 : 11
+                        font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                        color: cardRoot.service ? cardRoot.service.colGreen : "#a3be8c"
+                        elide: Text.ElideRight
+                    }
+                    MouseArea {
+                        id: markReadMa
+                        anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (cardRoot.notif) cardRoot.notif.dismiss()
+                            if (cardRoot.service) cardRoot.service.dismissSlot(cardRoot.slotIndex)
+                        }
+                    }
+                }
+
+                // Reply here
+                Item {
+                    Layout.fillWidth: true; height: 22
+                    Rectangle {
+                        anchors.fill: parent
+                        color: replyBtnMa.containsMouse
+                            ? Qt.rgba(0.56, 0.69, 0.82, 0.20)
+                            : Qt.rgba(0.56, 0.69, 0.82, 0.06)
+                        border.color: cardRoot.service ? cardRoot.service.colCyan : "#8fbcbb"
+                        border.width: 1
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        text: cardRoot.replyVisible ? "✕ Cancel" : "󰑗 Reply here"
+                        font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 5 : 11
+                        font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                        color: cardRoot.service ? cardRoot.service.colCyan : "#8fbcbb"
+                        elide: Text.ElideRight
+                    }
+                    MouseArea {
+                        id: replyBtnMa
+                        anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: cardRoot.replyVisible = !cardRoot.replyVisible
+                    }
+                }
+            }
+
+            // ── Reply input ──────────────────────────────────────────────
+            Rectangle {
+                visible: cardRoot.replyVisible
+                Layout.fillWidth: true
+                implicitHeight: replyRow.implicitHeight + 8
+                color: Qt.rgba(0.18, 0.21, 0.25, 0.6)
+                border.color: cardRoot.service ? cardRoot.service.colMuted : "#4c566a"
+                border.width: 1
+
+                RowLayout {
+                    id: replyRow
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    spacing: 4
+
+                    TextInput {
+                        id: replyInput
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        font.pixelSize: cardRoot.service ? cardRoot.service.fontSize - 4 : 12
+                        font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                        color: cardRoot.service ? cardRoot.service.colFg : "#d8dee9"
+                        clip: true
+                        focus: true
+                        onAccepted: {
+                            if (text.trim() !== "") {
+                                cardRoot._sendReply(text.trim())
+                                text = ""
+                            }
+                        }
+                    }
+
+                    Item {
+                        implicitWidth: sendTxt.implicitWidth
+                        implicitHeight: sendTxt.implicitHeight
+                        Text {
+                            id: sendTxt
+                            text: ""
+                            font.pixelSize: cardRoot.service ? cardRoot.service.fontSize : 14
+                            font.family:    cardRoot.service ? cardRoot.service.fontFamily : ""
+                            color: sendMa.containsMouse
+                                ? (cardRoot.service ? cardRoot.service.colCyan : "#8fbcbb")
+                                : (cardRoot.service ? cardRoot.service.colMuted : "#4c566a")
+                        }
+                        MouseArea {
+                            id: sendMa
+                            anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (replyInput.text.trim() !== "") {
+                                    cardRoot._sendReply(replyInput.text.trim())
+                                    replyInput.text = ""
+                                }
                             }
                         }
                     }
@@ -523,69 +676,95 @@ ShellRoot {
         colRed: root.colRed; colYellow: root.colYellow
     }
 
-    // ── Invisible anchor window for notification popups ───────────────────────
-    // PopupWindow требует anchor.window типа Window. Используем отдельный
-    // PanelWindow с нулевой высотой на первом экране как якорь для попапов.
+    // ── Notification popup windows ────────────────────────────────────
+    // PopupWindow несовместим с PanelWindow (layer-surface) на Niri —
+    // xdg-popup требует xdg_surface родителя. Используем PanelWindow
+    // с aboveWindows: true (LayerTop) и top-right anchors.
+    // Screen выбирается динамически — на каком экране курсор.
+
+    function _cursorScreen() {
+        if (!Quickshell.cursor || Quickshell.screens.length === 0)
+            return Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        var cp = Quickshell.cursor.position
+        for (var i = 0; i < Quickshell.screens.length; i++) {
+            var s = Quickshell.screens[i], g = s.geometry
+            if (cp.x >= g.x && cp.x < g.x + g.width && cp.y >= g.y && cp.y < g.y + g.height)
+                return s
+        }
+        return Quickshell.screens[0]
+    }
+
+    Connections {
+        target: notifPopup
+        function onSlotActivated(slotIdx, n) {
+            var sc = _cursorScreen()
+            if (slotIdx === 0) {
+                notifWin0.screen = sc
+                notifWin0.currentNotif = n
+                notifWin0.visible = true
+            } else if (slotIdx === 1) {
+                notifWin1.screen = sc
+                notifWin1.currentNotif = n
+                notifWin1.visible = true
+            }
+        }
+        function onSlotDeactivated(slotIdx) {
+            if (slotIdx === 0) notifWin0.visible = false
+            else if (slotIdx === 1) notifWin1.visible = false
+        }
+    }
+
     PanelWindow {
-        id: notifAnchorBar
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
-        implicitHeight: 0
+        id: notifWin0
+        property var currentNotif: null
+        screen: _cursorScreen()
+        visible: false
         color: "transparent"
-        exclusionMode: ExclusionMode.Normal
-        anchors { top: true; left: true; right: true }
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+        focusable: notifCard0.replyVisible
+        anchors.top: true
+        anchors.right: true
+        margins.top: notifPopup.topOffset
+        margins.right: notifPopup.rightOffset
+        implicitWidth: notifPopup.popupWidth
+        implicitHeight: notifCard0.implicitHeight + 2
 
-        Connections {
-            target: notifPopup
-            function onSlotActivated(slotIdx, n) {
-                if (slotIdx === 0) { notifWin0.currentNotif = n; notifWin0.visible = true }
-                else if (slotIdx === 1) { notifWin1.currentNotif = n; notifWin1.visible = true }
-            }
-            function onSlotDeactivated(slotIdx) {
-                if (slotIdx === 0) notifWin0.visible = false
-                else if (slotIdx === 1) notifWin1.visible = false
-            }
+        NotifCard {
+            id: notifCard0
+            anchors.fill: parent
+            notif: notifWin0.currentNotif
+            service: notifPopup
+            slotIndex: 0
+            autoCloseMs: notifPopup.autoCloseMs
+            popupVisible: notifWin0.visible
         }
+    }
 
-        PopupWindow {
-            id: notifWin0
-            property var currentNotif: null
-            anchor.window: notifAnchorBar
-            anchor.rect.x: notifAnchorBar.width - notifPopup.popupWidth - notifPopup.rightOffset
-            anchor.rect.y: notifPopup.topOffset
-            implicitWidth:  notifPopup.popupWidth
-            implicitHeight: notifCard0.implicitHeight + 2
-            visible: false
-            color: "transparent"
-            NotifCard {
-                id: notifCard0
-                anchors.fill: parent
-                notif: notifWin0.currentNotif
-                service: notifPopup
-                slotIndex: 0
-                autoCloseMs: notifPopup.autoCloseMs
-                popupVisible: notifWin0.visible
-            }
-        }
+    PanelWindow {
+        id: notifWin1
+        property var currentNotif: null
+        screen: _cursorScreen()
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+        focusable: notifCard1.replyVisible
+        anchors.top: true
+        anchors.right: true
+        margins.top: notifPopup.topOffset + 130
+        margins.right: notifPopup.rightOffset
+        implicitWidth: notifPopup.popupWidth
+        implicitHeight: notifCard1.implicitHeight + 2
 
-        PopupWindow {
-            id: notifWin1
-            property var currentNotif: null
-            anchor.window: notifAnchorBar
-            anchor.rect.x: notifAnchorBar.width - notifPopup.popupWidth - notifPopup.rightOffset
-            anchor.rect.y: notifPopup.topOffset + 130
-            implicitWidth:  notifPopup.popupWidth
-            implicitHeight: notifCard1.implicitHeight + 2
-            visible: false
-            color: "transparent"
-            NotifCard {
-                id: notifCard1
-                anchors.fill: parent
-                notif: notifWin1.currentNotif
-                service: notifPopup
-                slotIndex: 1
-                autoCloseMs: notifPopup.autoCloseMs
-                popupVisible: notifWin1.visible
-            }
+        NotifCard {
+            id: notifCard1
+            anchors.fill: parent
+            notif: notifWin1.currentNotif
+            service: notifPopup
+            slotIndex: 1
+            autoCloseMs: notifPopup.autoCloseMs
+            popupVisible: notifWin1.visible
         }
     }
 
@@ -681,6 +860,17 @@ ShellRoot {
                                 MouseArea {
                                     id: ctrlMa; anchors.fill: parent; hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    onClicked: controlMenu.toggle()
+                                }
+                            }
+                            Text {
+                                visible: notifPopup.unreadCount > 0
+                                text: notifPopup.unreadCount > 99 ? "󰂚 99+" : "󰂚 " + notifPopup.unreadCount
+                                color: notifPopup.unreadCount > 0 ? root.colCyan : root.colMuted
+                                font.pixelSize: root.fontSize - 2; font.family: root.fontFamily; font.bold: true
+                                Layout.leftMargin: 4
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: controlMenu.toggle()
                                 }
                             }

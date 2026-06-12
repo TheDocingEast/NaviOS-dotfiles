@@ -167,7 +167,7 @@ animations {
 // ─── STARTUP ─────────────────────────────────────────────────────────────────
 // Adapted from execStartup.lua
 spawn-at-startup "qs"                                           // Quickshell
-spawn-at-startup "swaync"                                       // Notifications
+// spawn-at-startup "swaync"                                       // Notifications → Quickshell handles this now
 spawn-at-startup "fcitx5" "-d"                                  // Japanese input
 spawn-at-startup "blueman-applet"
 spawn-at-startup "nm-applet"
@@ -289,8 +289,8 @@ binds {
     // used for column width cycling (useful). Reassigned picker below:
     Mod+R { spawn-sh "quickshell -p ~/.config/quickshell/wallpaperPicker"; }
 
-    // SwayNC toggle
-    Mod+Shift+N { spawn "swaync-client" "-t" "-sw"; }
+    // SwayNC toggle (disabled — Quickshell handles notifications now)
+    // Mod+Shift+N { spawn "swaync-client" "-t" "-sw"; }
 
     // Color picker
     Ctrl+Mod+C { spawn-sh "hyprpicker -a -f hex"; }

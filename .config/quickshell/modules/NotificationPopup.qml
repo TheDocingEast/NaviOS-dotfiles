@@ -97,10 +97,17 @@ Item {
     }
 
     // ── Внутреннее состояние слотов ───────────────────────────────────────
-    // Используем JS-массивы вместо ListModel (надёжнее для объектов)
     property var _slotActive: [false, false]
     property var _slotNotifs: [null, null]
     property var _pendingQueue: []
+
+    // Таймеры автозакрытия на уровне сервиса (не зависят от вьюх)
+    Timer { id: _closeTimer0; interval: npRoot.autoCloseMs; repeat: false; onTriggered: npRoot.dismissSlot(0) }
+    Timer { id: _closeTimer1; interval: npRoot.autoCloseMs; repeat: false; onTriggered: npRoot.dismissSlot(1) }
+
+    function _slotTimer(idx) {
+        return idx === 0 ? _closeTimer0 : _closeTimer1
+    }
 
     function _findFreeSlot() {
         for (var i = 0; i < maxVisible; i++) {
@@ -121,18 +128,21 @@ Item {
     }
 
     function _activateSlot(idx, notif) {
-        // Мутируем массивы через замену — QML отслеживает ссылку
         var active = _slotActive.slice()
         var notifs = _slotNotifs.slice()
         active[idx] = true
         notifs[idx] = notif
         _slotActive = active
         _slotNotifs = notifs
+        _slotTimer(idx).start()
         slotActivated(idx, notif)
     }
 
     // Публичный метод — вызывается из PopupWindow при закрытии
     function dismissSlot(idx) {
+        if (!_slotActive[idx]) return     // guard — уже закрыт
+        _slotTimer(idx).stop()
+
         var active = _slotActive.slice()
         var notifs = _slotNotifs.slice()
         active[idx] = false
@@ -167,15 +177,29 @@ Item {
         keepOnReload: true
 
         onNotification: function(notif) {
-            // Сохраняем в историю
-            historyModel.insert(0, { notif: notif, read: false })
+            // Копируем свойства в plain JS-объект — Notification QObject может быть
+            // уничтожен после выхода из обработчика, и его свойства станут недоступны.
+            var n = {
+                appName: notif.appName,
+                appIcon: notif.appIcon,
+                summary: notif.summary,
+                body: notif.body,
+                urgency: notif.urgency,
+                image: notif.image,
+                actions: notif.actions ? notif.actions.map(function(a) {
+                    return { identifier: a.identifier, label: a.label };
+                }) : [],
+                dismiss: function() { notif.dismiss(); },
+                expire: function() { notif.expire(); },
+                sendActionInvoked: function(id) { notif.sendActionInvoked(id); }
+            }
+            historyModel.insert(0, { notif: n, read: false })
             npRoot._recountUnread()
 
-            // DND: Critical-уведомления показываем всегда
             if (npRoot.dndActive && notif.urgency !== NotificationUrgency.Critical) {
                 return
             }
-            npRoot._enqueue(notif)
+            npRoot._enqueue(n)
         }
     }
 }
